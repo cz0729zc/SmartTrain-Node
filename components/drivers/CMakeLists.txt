@@ -1,2 +1,3 @@
-idf_component_register(INCLUDE_DIRS "include"
-                        SRCS "")
+idf_component_register(SRCS "driver_dht.c"
+                    INCLUDE_DIRS "include"
+                    REQUIRES driver esp_timer)
