@@ -76,13 +76,6 @@ menu "Example Configuration"
                 - ws://host:port/path (WebSocket)
                 - wss://host:port/path (WebSocket Secure)
         
-        config CONFIG_MQTT_BROKER_PORT
-            int "MQTT Broker Port"
-            default 1883
-            help
-                MQTT Broker 端口号，仅在 MQTT_BROKER_URL 中未指定端口时使用。
-                TCP 默认端口为 1883，TLS 默认端口为 8883。
-
         config MQTT_CLIENT_ID
             string "MQTT Client ID"
             default ""

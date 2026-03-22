@@ -92,10 +92,12 @@ esp_err_t app_mqtt_start(void)
     /* 配置 MQTT 客户端 */
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_MQTT_BROKER_URL,
-        .broker.address.port = CONFIG_MQTT_BROKER_PORT,
         .credentials.username = strlen(CONFIG_MQTT_USERNAME) > 0 ? CONFIG_MQTT_USERNAME : NULL,
         .credentials.authentication.password = strlen(CONFIG_MQTT_PASSWORD) > 0 ? CONFIG_MQTT_PASSWORD : NULL,
         .credentials.client_id = strlen(CONFIG_MQTT_CLIENT_ID) > 0 ? CONFIG_MQTT_CLIENT_ID : NULL,
+        .session.keepalive = 60,                     // Keep Alive 60秒
+        .network.timeout_ms = 10000,                 // 连接超时 10秒
+        .network.reconnect_timeout_ms = 4000,        // 重连间隔 4秒
     };
 
     /* 创建客户端 */
@@ -125,12 +127,9 @@ esp_err_t app_mqtt_start(void)
 
     ESP_LOGI(TAG, "MQTT 客户端启动成功");
     ESP_LOGI(TAG, "  Broker: %s", CONFIG_MQTT_BROKER_URL);
-    if (strlen(CONFIG_MQTT_CLIENT_ID) > 0) {
-        ESP_LOGI(TAG, "  Client ID: %s", CONFIG_MQTT_CLIENT_ID);
-    }
-    if (strlen(CONFIG_MQTT_USERNAME) > 0) {
-        ESP_LOGI(TAG, "  Username: %s", CONFIG_MQTT_USERNAME);
-    }
+    ESP_LOGI(TAG, "  Client ID: [%s] (len=%d)", CONFIG_MQTT_CLIENT_ID, strlen(CONFIG_MQTT_CLIENT_ID));
+    ESP_LOGI(TAG, "  Username: [%s] (len=%d)", CONFIG_MQTT_USERNAME, strlen(CONFIG_MQTT_USERNAME));
+    ESP_LOGI(TAG, "  Password: [%s] (len=%d)", CONFIG_MQTT_PASSWORD, strlen(CONFIG_MQTT_PASSWORD));
     return ESP_OK;
 }
 
