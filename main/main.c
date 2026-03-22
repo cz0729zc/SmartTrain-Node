@@ -18,10 +18,10 @@ void app_main(void)
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
     // 2. 启动传感器应用模块
-    ESP_ERROR_CHECK(app_sensor_start());
+    // ESP_ERROR_CHECK(app_sensor_start());
 
     // 3. 启动网络管理模块 (WiFi + MQTT)
-    // ESP_ERROR_CHECK(app_network_start());
+    ESP_ERROR_CHECK(app_network_start());
 
     // 4. (可选) 创建 UI 交互任务
     // xTaskCreate(ui_task, "ui_task", ...);

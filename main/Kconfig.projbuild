@@ -64,4 +64,46 @@ menu "Example Configuration"
             bool "WAPI PSK"
     endchoice
 
+    menu "MQTT Configuration"
+
+        config MQTT_BROKER_URL
+            string "MQTT Broker URL"
+            default "mqtt://mqtt.eclipseprojects.io"
+            help
+                MQTT Broker 地址，支持以下格式：
+                - mqtt://host:port    (TCP, 默认端口 1883)
+                - mqtts://host:port   (TLS, 默认端口 8883)
+                - ws://host:port/path (WebSocket)
+                - wss://host:port/path (WebSocket Secure)
+        
+        config CONFIG_MQTT_BROKER_PORT
+            int "MQTT Broker Port"
+            default 1883
+            help
+                MQTT Broker 端口号，仅在 MQTT_BROKER_URL 中未指定端口时使用。
+                TCP 默认端口为 1883，TLS 默认端口为 8883。
+
+        config MQTT_CLIENT_ID
+            string "MQTT Client ID"
+            default ""
+            help
+                MQTT 客户端 ID，用于标识设备。
+                留空则自动生成 (ESP32_XXXX 格式，XXXX 为 MAC 地址后 3 字节)。
+
+        config MQTT_USERNAME
+            string "MQTT Username"
+            default ""
+            help
+                MQTT 用户名，用于 Broker 认证。
+                如果 Broker 不需要认证，留空即可。
+
+        config MQTT_PASSWORD
+            string "MQTT Password"
+            default ""
+            help
+                MQTT 密码，用于 Broker 认证。
+                如果 Broker 不需要认证，留空即可。
+
+    endmenu
+
 endmenu

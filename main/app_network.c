@@ -1,5 +1,6 @@
 #include "app_network.h"
 #include "app_wifi.h"
+#include "app_mqtt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -22,12 +23,18 @@ static void network_task(void *pvParameters)
         
         if (err == ESP_OK) {
             ESP_LOGI(TAG, "WiFi 已连接，准备启动 MQTT...");
-            
-            // TODO: 在这里启动 MQTT 客户端
-            // app_mqtt_start();
+
+            // 启动 MQTT 客户端
+            esp_err_t mqtt_err = app_mqtt_start();
+            if (mqtt_err == ESP_OK) {
+                ESP_LOGI(TAG, "MQTT 客户端启动成功");
+            } else if (mqtt_err == ESP_ERR_INVALID_STATE) {
+                ESP_LOGD(TAG, "MQTT 客户端已在运行");
+            } else {
+                ESP_LOGE(TAG, "MQTT 客户端启动失败: %s", esp_err_to_name(mqtt_err));
+            }
 
             // 保持任务运行，用于处理后续的网络维护或等待断开事件
-            // 如果连接断开，app_wifi 组件会自动重连，这里我们只需简单的延时检测或等待信号量
             // 后续可以使用 EventGroup 等待 WIFI_FAIL 或 MQTT_DISCONNECT 事件
             vTaskDelay(pdMS_TO_TICKS(5000)); 
         } else {
