@@ -1,4 +1,5 @@
 #include "app_sensor.h"
+#include "sensor_data.h"
 #include "driver_dht.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -9,27 +10,32 @@ static const char *TAG = "app_sensor";
 
 // 传感器配置
 #define SENSOR_TYPE DRIVER_DHT_TYPE_DHT11
-#define SENSOR_GPIO GPIO_NUM_4  
+#define SENSOR_GPIO GPIO_NUM_4
+#define SENSOR_READ_INTERVAL_MS 5000  // 采集间隔 5 秒
 
 static TaskHandle_t s_sensor_task_handle = NULL;
 
 static void sensor_task(void *pvParameters)
 {
-    float temperature, humidity;
+    sensor_data_t data;
     ESP_LOGI(TAG, "传感器任务启动...");
 
     while (1)
     {
         // 调用底层驱动读取数据
-        if (driver_dht_read_float_data(SENSOR_TYPE, SENSOR_GPIO, &humidity, &temperature) == ESP_OK) {
-            ESP_LOGI(TAG, "Humidity: %.1f%% Temp: %.1fC", humidity, temperature);
-            // TODO: 将数据发送到事件队列
+        if (driver_dht_read_float_data(SENSOR_TYPE, SENSOR_GPIO, &data.humidity, &data.temperature) == ESP_OK) {
+            ESP_LOGI(TAG, "温度: %.1f°C, 湿度: %.1f%%", data.temperature, data.humidity);
+
+            // 发送到队列，由 network_task 消费
+            if (sensor_queue_send(&data, 0) != ESP_OK) {
+                ESP_LOGW(TAG, "发送数据到队列失败 (队列已满)");
+            }
         } else {
             ESP_LOGW(TAG, "无法从传感器读取数据");
         }
-        
-        // 采集周期：2秒
-        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        // 采集周期
+        vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS));
     }
 }
 

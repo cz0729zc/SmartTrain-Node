@@ -1,6 +1,7 @@
 #include "app_network.h"
 #include "app_wifi.h"
 #include "app_mqtt.h"
+#include "sensor_data.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -11,36 +12,39 @@ static TaskHandle_t s_network_task_handle = NULL;
 
 static void network_task(void *pvParameters)
 {
+    sensor_data_t sensor_data;
+
     ESP_LOGI(TAG, "网络任务启动，开始连接 WiFi...");
 
     // 1. 初始化 WiFi 组件 (调用 components/app_wifi)
     app_wifi_init();
-    
-    // 2. 循环等待连接（这里实现了断网重连的简单逻辑基础）
+
+    // 2. 等待 WiFi 连接成功
+    while (app_wifi_wait_connected() != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi 连接失败，稍后重试...");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    ESP_LOGI(TAG, "WiFi 已连接，准备启动 MQTT...");
+
+    // 3. 启动 MQTT 客户端
+    esp_err_t mqtt_err = app_mqtt_start();
+    if (mqtt_err != ESP_OK && mqtt_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "MQTT 客户端启动失败: %s", esp_err_to_name(mqtt_err));
+    }
+
+    // 4. 主循环：从队列接收传感器数据并发布到 MQTT
     while (1) {
-        // 阻塞等待连接成功
-        esp_err_t err = app_wifi_wait_connected();
-        
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "WiFi 已连接，准备启动 MQTT...");
-
-            // 启动 MQTT 客户端
-            esp_err_t mqtt_err = app_mqtt_start();
-            if (mqtt_err == ESP_OK) {
-                ESP_LOGI(TAG, "MQTT 客户端启动成功");
-            } else if (mqtt_err == ESP_ERR_INVALID_STATE) {
-                ESP_LOGD(TAG, "MQTT 客户端已在运行");
+        // 阻塞等待队列数据，超时 5 秒
+        if (sensor_queue_receive(&sensor_data, 5000) == ESP_OK) {
+            // 检查 MQTT 连接状态后发布
+            if (app_mqtt_is_connected()) {
+                app_mqtt_publish_sensor_data(sensor_data.temperature, sensor_data.humidity);
             } else {
-                ESP_LOGE(TAG, "MQTT 客户端启动失败: %s", esp_err_to_name(mqtt_err));
+                ESP_LOGW(TAG, "MQTT 未连接，数据丢弃");
             }
-
-            // 保持任务运行，用于处理后续的网络维护或等待断开事件
-            // 后续可以使用 EventGroup 等待 WIFI_FAIL 或 MQTT_DISCONNECT 事件
-            vTaskDelay(pdMS_TO_TICKS(5000)); 
-        } else {
-            ESP_LOGE(TAG, "WiFi 连接失败，稍后重试...");
-            vTaskDelay(pdMS_TO_TICKS(1000));
         }
+        // 超时则继续循环，检查其他状态
     }
 }
 

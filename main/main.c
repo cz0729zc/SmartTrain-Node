@@ -1,5 +1,6 @@
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "sensor_data.h"
 #include "app_sensor.h"
 #include "app_network.h"
 
@@ -17,10 +18,13 @@ void app_main(void)
 
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
-    // 2. 启动传感器应用模块
-    // ESP_ERROR_CHECK(app_sensor_start());
+    // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
+    ESP_ERROR_CHECK(sensor_queue_init(5));
 
-    // 3. 启动网络管理模块 (WiFi + MQTT)
+    // 3. 启动传感器应用模块
+    ESP_ERROR_CHECK(app_sensor_start());
+
+    // 4. 启动网络管理模块 (WiFi + MQTT)
     ESP_ERROR_CHECK(app_network_start());
 
     // 4. (可选) 创建 UI 交互任务

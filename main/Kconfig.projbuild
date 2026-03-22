@@ -75,7 +75,7 @@ menu "Example Configuration"
                 - mqtts://host:port   (TLS, 默认端口 8883)
                 - ws://host:port/path (WebSocket)
                 - wss://host:port/path (WebSocket Secure)
-        
+
         config MQTT_CLIENT_ID
             string "MQTT Client ID"
             default ""
@@ -96,6 +96,12 @@ menu "Example Configuration"
             help
                 MQTT 密码，用于 Broker 认证。
                 如果 Broker 不需要认证，留空即可。
+
+        config ONENET_DEVICE_ID
+            string "OneNET Device ID"
+            default "2562544490"
+            help
+                OneNET 平台的设备 ID，用于消息上报时的 id 字段。
 
     endmenu
 
