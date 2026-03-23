@@ -45,7 +45,7 @@ esp_err_t app_sensor_start(void)
         return ESP_ERR_INVALID_STATE; // 任务已存在
     }
 
-    BaseType_t ret = xTaskCreate(sensor_task, "sensor_task", 2048, NULL, 5, &s_sensor_task_handle);
+    BaseType_t ret = xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &s_sensor_task_handle);
     
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "创建传感器任务失败");

@@ -3,8 +3,20 @@
 #include "sensor_data.h"
 #include "app_sensor.h"
 #include "app_network.h"
+#include "app_rfid.h"
 
 static const char *TAG = "main";
+
+/**
+ * @brief RFID 卡片检测回调
+ */
+static void on_rfid_card_detected(const rfid_card_info_t *card, void *arg)
+{
+    ESP_LOGI(TAG, "检测到 RFID 卡片, UID: %s", card->uid_str);
+
+    // TODO: 在这里添加业务逻辑
+    // 例如: 上传卡片信息到 MQTT, 记录打卡等
+}
 
 void app_main(void)
 {
@@ -27,8 +39,9 @@ void app_main(void)
     // 4. 启动网络管理模块 (WiFi + MQTT)
     ESP_ERROR_CHECK(app_network_start());
 
-    // 4. (可选) 创建 UI 交互任务
-    // xTaskCreate(ui_task, "ui_task", ...);
+    // 5. 启动 RFID 模块
+    app_rfid_set_card_callback(on_rfid_card_detected, NULL);
+    ESP_ERROR_CHECK(app_rfid_start());
 
     ESP_LOGI(TAG, "app_main 执行完毕 (即将在空闲时自行删除)");
     // app_main 函数返回后，其对应的任务会自动删除，但它创建的子任务会继续运行
