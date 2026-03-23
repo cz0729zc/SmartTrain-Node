@@ -8,18 +8,15 @@
 
 static const char *TAG = "app_mqtt";
 
-/* OneNET 物模型主题
- * 产品ID = MQTT_USERNAME
- * 设备名 = MQTT_CLIENT_ID
- */
-#define ONENET_TOPIC_PROPERTY_POST       "$sys/" CONFIG_MQTT_USERNAME "/" CONFIG_MQTT_CLIENT_ID "/thing/property/post"
-#define ONENET_TOPIC_PROPERTY_POST_REPLY "$sys/" CONFIG_MQTT_USERNAME "/" CONFIG_MQTT_CLIENT_ID "/thing/property/post/reply"
-
 /* MQTT 客户端句柄 */
 static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 
 /* MQTT 连接状态 */
 static volatile bool s_mqtt_connected = false;
+
+/* MQTT 事件回调 */
+static app_mqtt_event_cb_t s_event_cb = NULL;
+static void *s_event_cb_arg = NULL;
 
 /**
  * @brief 打印非零错误码
@@ -42,14 +39,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT 已连接到 Broker");
         s_mqtt_connected = true;
-        // 自动订阅属性上报回复主题
-        esp_mqtt_client_subscribe(s_mqtt_client, ONENET_TOPIC_PROPERTY_POST_REPLY, 0);
-        ESP_LOGI(TAG, "已订阅: %s", ONENET_TOPIC_PROPERTY_POST_REPLY);
+        // 通知上层应用处理连接事件
+        if (s_event_cb != NULL) {
+            s_event_cb(APP_MQTT_EVENT_CONNECTED, s_event_cb_arg);
+        }
         break;
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "MQTT 连接断开");
         s_mqtt_connected = false;
+        // 通知上层应用处理断开事件
+        if (s_event_cb != NULL) {
+            s_event_cb(APP_MQTT_EVENT_DISCONNECTED, s_event_cb_arg);
+        }
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -217,27 +219,8 @@ bool app_mqtt_is_connected(void)
     return s_mqtt_connected;
 }
 
-int app_mqtt_publish_sensor_data(float temperature, float humidity)
+void app_mqtt_set_event_callback(app_mqtt_event_cb_t callback, void *arg)
 {
-    if (!s_mqtt_connected) {
-        ESP_LOGW(TAG, "MQTT 未连接，无法发布数据");
-        return -1;
-    }
-
-    // 构建 JSON 数据
-    char json_buf[256];
-    int len = snprintf(json_buf, sizeof(json_buf),
-        "{\"id\":\"%s\",\"version\":\"1.0\",\"params\":{"
-        "\"humidity\":{\"value\":%.1f},"
-        "\"temperature\":{\"value\":%.1f}"
-        "}}",
-        CONFIG_ONENET_DEVICE_ID, humidity, temperature);
-
-    if (len < 0 || len >= sizeof(json_buf)) {
-        ESP_LOGE(TAG, "JSON 数据构建失败");
-        return -1;
-    }
-
-    ESP_LOGI(TAG, "发布传感器数据: %s", json_buf);
-    return app_mqtt_publish(ONENET_TOPIC_PROPERTY_POST, json_buf, len, 0, 0);
+    s_event_cb = callback;
+    s_event_cb_arg = arg;
 }
