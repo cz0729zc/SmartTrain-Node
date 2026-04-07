@@ -129,6 +129,8 @@ esp_err_t app_rfid_start(void)
     rc522_config_t scanner_config = {
         .driver = s_driver,
         .poll_interval_ms = RC522_POLL_INTERVAL_MS,
+        .task_stack_size = 4096,  // RC522 内部任务栈大小
+        .task_priority = 5,
     };
 
     // 创建扫描器
@@ -319,6 +321,90 @@ esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_
     // 取消认证
     rc522_mifare_deauth(s_scanner, s_active_picc);
 
+    xSemaphoreGive(s_picc_mutex);
+    return ret;
+}
+
+esp_err_t app_rfid_read_write_verify(uint8_t block_address, const uint8_t *write_data,
+                                      uint8_t *read_before, uint8_t *read_after)
+{
+    if (write_data == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // 防止写入 Block 0
+    if (block_address == 0) {
+        ESP_LOGE(TAG, "禁止写入 Block 0");
+        return ESP_ERR_NOT_ALLOWED;
+    }
+
+    // 警告 Sector Trailer
+    if ((block_address + 1) % 4 == 0) {
+        ESP_LOGW(TAG, "警告: 块 %d 是 Sector Trailer", block_address);
+    }
+
+    if (s_scanner == NULL) {
+        ESP_LOGE(TAG, "RFID 模块未启动");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t ret = ESP_FAIL;
+
+    if (xSemaphoreTake(s_picc_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "获取互斥锁超时");
+        return ESP_ERR_TIMEOUT;
+    }
+
+    if (s_active_picc == NULL) {
+        ESP_LOGW(TAG, "没有活动的卡片");
+        xSemaphoreGive(s_picc_mutex);
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    if (!rc522_mifare_type_is_classic_compatible(s_active_picc->type)) {
+        ESP_LOGW(TAG, "非 MIFARE Classic 卡");
+        xSemaphoreGive(s_picc_mutex);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    // 1. 认证 (整个读写验证过程只认证一次)
+    ret = rc522_mifare_auth(s_scanner, s_active_picc, block_address, &s_default_key);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "认证失败: %s", esp_err_to_name(ret));
+        xSemaphoreGive(s_picc_mutex);
+        return ret;
+    }
+
+    // 2. 读取原始数据
+    if (read_before != NULL) {
+        ret = rc522_mifare_read(s_scanner, s_active_picc, block_address, read_before);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "读取原始数据失败: %s", esp_err_to_name(ret));
+            goto cleanup;
+        }
+        ESP_LOGI(TAG, "读取原始数据成功");
+    }
+
+    // 3. 写入新数据
+    ret = rc522_mifare_write(s_scanner, s_active_picc, block_address, write_data);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "写入数据失败: %s", esp_err_to_name(ret));
+        goto cleanup;
+    }
+    ESP_LOGI(TAG, "写入数据成功");
+
+    // 4. 读取验证
+    if (read_after != NULL) {
+        ret = rc522_mifare_read(s_scanner, s_active_picc, block_address, read_after);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "读取验证数据失败: %s", esp_err_to_name(ret));
+            goto cleanup;
+        }
+        ESP_LOGI(TAG, "读取验证数据成功");
+    }
+
+cleanup:
+    rc522_mifare_deauth(s_scanner, s_active_picc);
     xSemaphoreGive(s_picc_mutex);
     return ret;
 }

@@ -11,8 +11,9 @@ extern "C" {
  * @brief 传感器数据结构
  */
 typedef struct {
-    float temperature;  // 温度 (摄氏度)
-    float humidity;     // 湿度 (百分比)
+    float temperature;      // 温度 (摄氏度)
+    float humidity;         // 湿度 (百分比)
+    uint16_t co2_ppm;       // CO2 浓度 (ppm)
 } sensor_data_t;
 
 /**

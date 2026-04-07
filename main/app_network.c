@@ -35,17 +35,18 @@ static void mqtt_event_callback(app_mqtt_event_t event, void *arg)
 }
 
 /**
- * @brief 发布传感器数据到 OneNET 平台
+ * @brief 发布传感器数据到 OneNET 平台 (聚合上报)
  */
-static int publish_sensor_data(float temperature, float humidity)
+static int publish_sensor_data(float temperature, float humidity, uint16_t co2_ppm)
 {
     char json_buf[256];
     int len = snprintf(json_buf, sizeof(json_buf),
         "{\"id\":\"%s\",\"version\":\"1.0\",\"params\":{"
         "\"humidity\":{\"value\":%.1f},"
-        "\"temperature\":{\"value\":%.1f}"
+        "\"temperature\":{\"value\":%.1f},"
+        "\"CO2\":{\"value\":%u}"
         "}}",
-        CONFIG_ONENET_DEVICE_ID, humidity, temperature);
+        CONFIG_ONENET_DEVICE_ID, humidity, temperature, co2_ppm);
 
     if (len < 0 || len >= sizeof(json_buf)) {
         ESP_LOGE(TAG, "JSON 数据构建失败");
@@ -59,6 +60,7 @@ static int publish_sensor_data(float temperature, float humidity)
 static void network_task(void *pvParameters)
 {
     sensor_data_t sensor_data;
+    sensor_data_t cached_data = {0};  // 缓存最新数据
 
     ESP_LOGI(TAG, "网络任务启动，开始连接 WiFi...");
 
@@ -82,13 +84,22 @@ static void network_task(void *pvParameters)
         ESP_LOGE(TAG, "MQTT 客户端启动失败: %s", esp_err_to_name(mqtt_err));
     }
 
-    // 5. 主循环：从队列接收传感器数据并发布到 MQTT
+    // 5. 主循环：从队列接收传感器数据，缓存后聚合上报
     while (1) {
         // 阻塞等待队列数据，超时 5 秒
         if (sensor_queue_receive(&sensor_data, 5000) == ESP_OK) {
+            // 更新缓存数据
+            if (sensor_data.temperature != 0 || sensor_data.humidity != 0) {
+                cached_data.temperature = sensor_data.temperature;
+                cached_data.humidity = sensor_data.humidity;
+            }
+            if (sensor_data.co2_ppm != 0) {
+                cached_data.co2_ppm = sensor_data.co2_ppm;
+            }
+
             // 检查 MQTT 连接状态后发布
             if (app_mqtt_is_connected()) {
-                publish_sensor_data(sensor_data.temperature, sensor_data.humidity);
+                publish_sensor_data(cached_data.temperature, cached_data.humidity, cached_data.co2_ppm);
             } else {
                 ESP_LOGW(TAG, "MQTT 未连接，数据丢弃");
             }

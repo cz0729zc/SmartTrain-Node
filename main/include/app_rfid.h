@@ -71,6 +71,21 @@ esp_err_t app_rfid_read_block(uint8_t block_address, uint8_t *buffer, size_t buf
  */
 esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_t data_len);
 
+/**
+ * @brief 读写测试 (单次认证会话)
+ *
+ * 在同一认证会话中完成：读取原数据 → 写入新数据 → 读取验证
+ * 避免多次 auth/deauth 导致的认证失败问题。
+ *
+ * @param block_address 块地址
+ * @param write_data 写入数据 (16 字节)
+ * @param read_before 读取到的原始数据 (16 字节，可为 NULL)
+ * @param read_after 写入后读取的数据 (16 字节，可为 NULL)
+ * @return esp_err_t ESP_OK 成功，其他失败
+ */
+esp_err_t app_rfid_read_write_verify(uint8_t block_address, const uint8_t *write_data,
+                                      uint8_t *read_before, uint8_t *read_after);
+
 #ifdef __cplusplus
 }
 #endif

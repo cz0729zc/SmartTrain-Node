@@ -9,21 +9,21 @@
 static const char *TAG = "app_sensor";
 
 // 传感器配置
-#define SENSOR_TYPE DRIVER_DHT_TYPE_DHT11
+#define DHT_SENSOR_TYPE DRIVER_DHT_TYPE_DHT11
 #define SENSOR_GPIO GPIO_NUM_4
-#define SENSOR_READ_INTERVAL_MS 5000  // 采集间隔 5 秒
+#define SENSOR_READ_INTERVAL_MS 2000  // 采集间隔 2 秒
 
 static TaskHandle_t s_sensor_task_handle = NULL;
 
 static void sensor_task(void *pvParameters)
 {
-    sensor_data_t data;
+    sensor_data_t data = {0};
     ESP_LOGI(TAG, "传感器任务启动...");
 
     while (1)
     {
         // 调用底层驱动读取数据
-        if (driver_dht_read_float_data(SENSOR_TYPE, SENSOR_GPIO, &data.humidity, &data.temperature) == ESP_OK) {
+        if (driver_dht_read_float_data(DHT_SENSOR_TYPE, SENSOR_GPIO, &data.humidity, &data.temperature) == ESP_OK) {
             ESP_LOGI(TAG, "温度: %.1f°C, 湿度: %.1f%%", data.temperature, data.humidity);
 
             // 发送到队列，由 network_task 消费
