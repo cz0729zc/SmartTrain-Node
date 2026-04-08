@@ -19,3 +19,5 @@ dependencies:
   # espressif/mqtt: ^1.0.0
   atanisoft/esp_lcd_ili9488: ^1.1.0
   atanisoft/esp_lcd_touch_xpt2046: ^1.0.6
+  lvgl/lvgl: ^9.5.0
+  espressif/esp_lvgl_port: ^2.7.2

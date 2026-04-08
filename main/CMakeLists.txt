@@ -1,2 +1,2 @@
-idf_component_register(SRCS "app_display.c" "app_co2.c" "app_rfid.c" "main.c" "app_sensor.c" "app_network.c" "sensor_data.c"
+idf_component_register(SRCS "app_lvgl.c" "app_display.c" "app_co2.c" "app_rfid.c" "main.c" "app_sensor.c" "app_network.c" "sensor_data.c"
                     INCLUDE_DIRS "." "include")

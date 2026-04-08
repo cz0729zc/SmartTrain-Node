@@ -156,7 +156,7 @@ esp_err_t bsp_lcd_init(void)
     ESP_LOGI(TAG, "创建 ILI9488 panel (RST:%d)", BSP_LCD_RST);
     esp_lcd_panel_dev_config_t panel_cfg = {
         .reset_gpio_num = BSP_LCD_RST,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,  /* 尝试 RGB 顺序 */
         .bits_per_pixel = BSP_LCD_BIT_PER_PIXEL,
         .flags = {
             .reset_active_high = 0,
@@ -178,7 +178,7 @@ esp_err_t bsp_lcd_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_init(s_lcd_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_lcd_panel_handle, false));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(s_lcd_panel_handle, false));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_lcd_panel_handle, true, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_lcd_panel_handle, false, false));  /* 镜像由 LVGL port 控制 */
     ESP_ERROR_CHECK(esp_lcd_panel_set_gap(s_lcd_panel_handle, 0, 0));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_lcd_panel_handle, true));
 
@@ -203,6 +203,11 @@ void bsp_lcd_backlight_set(uint8_t percent)
 esp_lcd_panel_handle_t bsp_lcd_get_panel_handle(void)
 {
     return s_lcd_panel_handle;
+}
+
+esp_lcd_panel_io_handle_t bsp_lcd_get_io_handle(void)
+{
+    return s_lcd_io_handle;
 }
 
 void bsp_lcd_fill_color(uint16_t color)

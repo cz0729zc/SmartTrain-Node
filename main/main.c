@@ -5,7 +5,7 @@
 #include "app_network.h"
 #include "app_rfid.h"
 #include "app_co2.h"
-#include "app_display.h"
+#include "app_lvgl.h"
 #include <string.h>
 
 static const char *TAG = "main";
@@ -87,9 +87,9 @@ void app_main(void)
     // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
     // ESP_ERROR_CHECK(sensor_queue_init(5));
 
-    // 3. 初始化并测试显示模块 (LCD + 触摸屏)
-    ESP_ERROR_CHECK(app_display_init());
-    // app_display_test();  // 注意: 此函数会阻塞，用于测试
+    // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
+    ESP_ERROR_CHECK(app_lvgl_init());
+    app_lvgl_demo();  // 显示测试界面
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());

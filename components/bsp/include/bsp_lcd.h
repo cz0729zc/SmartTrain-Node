@@ -7,6 +7,7 @@
 #define BSP_LCD_H
 
 #include <esp_err.h>
+#include <esp_lcd_panel_io.h>
 #include <esp_lcd_panel_ops.h>
 
 #ifdef __cplusplus
@@ -30,6 +31,12 @@ void bsp_lcd_backlight_set(uint8_t percent);
  * @return panel handle, 用于绘图操作
  */
 esp_lcd_panel_handle_t bsp_lcd_get_panel_handle(void);
+
+/**
+ * @brief 获取 LCD IO handle
+ * @return io handle, 用于 LVGL 等库
+ */
+esp_lcd_panel_io_handle_t bsp_lcd_get_io_handle(void);
 
 /**
  * @brief 填充纯色 (用于测试)
