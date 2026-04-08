@@ -89,7 +89,7 @@ void app_main(void)
 
     // 3. 初始化并测试显示模块 (LCD + 触摸屏)
     ESP_ERROR_CHECK(app_display_init());
-    app_display_test();  // 注意: 此函数会阻塞，用于测试
+    // app_display_test();  // 注意: 此函数会阻塞，用于测试
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());

@@ -71,6 +71,8 @@ esp_err_t bsp_touch_init(void)
 
 bool bsp_touch_read(uint16_t *x, uint16_t *y)
 {
+    static uint32_t debug_cnt = 0;
+
     if (s_touch_handle == NULL) {
         return false;
     }
@@ -78,6 +80,10 @@ bool bsp_touch_read(uint16_t *x, uint16_t *y)
     /* 更新触摸数据 */
     esp_err_t ret = esp_lcd_touch_read_data(s_touch_handle);
     if (ret != ESP_OK) {
+        /* 每 100 次打印一次错误，避免刷屏 */
+        if (debug_cnt++ % 100 == 0) {
+            ESP_LOGW(TAG, "触摸读取失败: %s", esp_err_to_name(ret));
+        }
         return false;
     }
 
@@ -90,6 +96,13 @@ bool bsp_touch_read(uint16_t *x, uint16_t *y)
     bool touched = esp_lcd_touch_get_coordinates(s_touch_handle,
                                                   touch_x, touch_y,
                                                   touch_strength, &touch_cnt, 1);
+
+    /* 调试：每 100 次打印一次状态 */
+    if (debug_cnt++ % 100 == 0) {
+        ESP_LOGI(TAG, "[DEBUG] touched=%d, cnt=%d, x=%d, y=%d, strength=%d",
+                 touched, touch_cnt, touch_x[0], touch_y[0], touch_strength[0]);
+    }
+
     if (touched && touch_cnt > 0) {
         if (x) *x = touch_x[0];
         if (y) *y = touch_y[0];
