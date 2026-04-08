@@ -1,2 +1,6 @@
-idf_component_register(INCLUDE_DIRS "include"
-                        SRCS "")  # 暂时没有源文件，后续添加 .c 文件到这里
+idf_component_register(
+    SRCS "bsp_lcd.c" "bsp_touch.c"
+    INCLUDE_DIRS "include"
+    REQUIRES driver esp_lcd esp_timer
+    PRIV_REQUIRES esp_lcd_ili9488 esp_lcd_touch_xpt2046
+)
