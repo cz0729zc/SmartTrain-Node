@@ -6,6 +6,7 @@
 #include "app_rfid.h"
 #include "app_co2.h"
 #include "app_lvgl.h"
+#include "attendance_profile.h"
 #include <string.h>
 
 static const char *TAG = "main";
@@ -66,10 +67,18 @@ static void rfid_read_write_test(void)
  */
 static void on_rfid_card_detected(const rfid_card_info_t *card, void *arg)
 {
+    attendance_profile_t profile = {0};
+
     ESP_LOGI(TAG, "检测到 RFID 卡片, UID: %s", card->uid_str);
 
-    // 执行读写测试
-    rfid_read_write_test();
+    if (attendance_profile_find_by_uid(card->uid_str, &profile) == ESP_OK) {
+        ESP_LOGI(TAG, "识别成功: 学号=%s, 姓名=%s", profile.student_id, profile.name);
+    } else {
+        ESP_LOGW(TAG, "未注册卡片: UID=%s", card->uid_str);
+    }
+
+    // 调试用读写测试（默认关闭，避免覆盖业务数据）
+    // rfid_read_write_test();
 }
 
 void app_main(void)
@@ -81,6 +90,12 @@ void app_main(void)
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    // 1.1 初始化本地学员档案映射 (UID -> 学号/姓名)
+    ESP_ERROR_CHECK(attendance_profile_init());
+
+    // 示例: 首次可手动写入测试档案，确认刷卡后能识别姓名
+    // ESP_ERROR_CHECK(attendance_profile_upsert("04:A1:B2:C3:D4", "2026001", "张三"));
 
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
