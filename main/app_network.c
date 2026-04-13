@@ -1,6 +1,7 @@
 #include "app_network.h"
 #include "app_wifi.h"
 #include "app_mqtt.h"
+#include "app_time.h"
 #include "sensor_data.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -61,6 +62,7 @@ static void network_task(void *pvParameters)
 {
     sensor_data_t sensor_data;
     sensor_data_t cached_data = {0};  // 缓存最新数据
+    TickType_t last_no_data_warn_tick = 0;
 
     ESP_LOGI(TAG, "网络任务启动，开始连接 WiFi...");
 
@@ -75,19 +77,33 @@ static void network_task(void *pvParameters)
 
     ESP_LOGI(TAG, "WiFi 已连接，准备启动 MQTT...");
 
-    // 3. 设置 MQTT 事件回调 (处理 OneNET 业务)
+    // 3. 联网后执行一次 SNTP 对时（对时后停止 SNTP，避免额外流量）
+    esp_err_t time_err = app_time_sync_once(0);
+    if (time_err == ESP_OK) {
+        char time_buf[32] = {0};
+        if (app_time_format_local(time_buf, sizeof(time_buf)) == ESP_OK) {
+            ESP_LOGI(TAG, "当前本地时间: %s", time_buf);
+        }
+    } else {
+        ESP_LOGW(TAG, "SNTP 对时失败，后续时间戳可能不准确: %s", esp_err_to_name(time_err));
+    }
+
+    // 4. 设置 MQTT 事件回调 (处理 OneNET 业务)
     app_mqtt_set_event_callback(mqtt_event_callback, NULL);
 
-    // 4. 启动 MQTT 客户端
+    // 5. 启动 MQTT 客户端
     esp_err_t mqtt_err = app_mqtt_start();
     if (mqtt_err != ESP_OK && mqtt_err != ESP_ERR_INVALID_STATE) {
         ESP_LOGE(TAG, "MQTT 客户端启动失败: %s", esp_err_to_name(mqtt_err));
     }
 
-    // 5. 主循环：从队列接收传感器数据，缓存后聚合上报
+    // 6. 主循环：从队列接收传感器数据，缓存后聚合上报
     while (1) {
+        esp_err_t qret;
+
         // 阻塞等待队列数据，超时 5 秒
-        if (sensor_queue_receive(&sensor_data, 5000) == ESP_OK) {
+        qret = sensor_queue_receive(&sensor_data, 5000);
+        if (qret == ESP_OK) {
             // 更新缓存数据
             if (sensor_data.temperature != 0 || sensor_data.humidity != 0) {
                 cached_data.temperature = sensor_data.temperature;
@@ -103,6 +119,26 @@ static void network_task(void *pvParameters)
             } else {
                 ESP_LOGW(TAG, "MQTT 未连接，数据丢弃");
             }
+        } else {
+            TickType_t now = xTaskGetTickCount();
+
+            // 无传感器/无数据时仅周期性告警，不阻塞主流程
+            if (qret == ESP_ERR_INVALID_STATE) {
+                if ((now - last_no_data_warn_tick) > pdMS_TO_TICKS(10000)) {
+                    ESP_LOGW(TAG, "传感器队列未初始化，当前仅运行网络与时间同步功能");
+                    last_no_data_warn_tick = now;
+                }
+            } else if (qret == ESP_ERR_TIMEOUT) {
+                if ((now - last_no_data_warn_tick) > pdMS_TO_TICKS(10000)) {
+                    ESP_LOGW(TAG, "暂未收到传感器数据，系统保持运行");
+                    last_no_data_warn_tick = now;
+                }
+            } else {
+                ESP_LOGW(TAG, "接收传感器队列异常: %s", esp_err_to_name(qret));
+            }
+
+            // 队列无数据或未初始化时避免空转
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
         // 超时则继续循环，检查其他状态
     }

@@ -105,4 +105,27 @@ menu "Example Configuration"
 
     endmenu
 
+    menu "Time Sync Configuration"
+
+        config TIME_SYNC_NTP_SERVER
+            string "SNTP Server"
+            default "ntp.aliyun.com"
+            help
+                NTP 服务器地址。设备联网后会使用该服务器进行一次时间同步。
+
+        config TIME_SYNC_TIMEOUT_MS
+            int "SNTP Sync Timeout (ms)"
+            range 1000 60000
+            default 15000
+            help
+                等待 SNTP 首次同步的超时时间。
+
+        config TIME_SYNC_TIMEZONE
+            string "Timezone (TZ)"
+            default "CST-8"
+            help
+                C 标准库时区字符串。中国时区可使用 CST-8。
+
+    endmenu
+
 endmenu

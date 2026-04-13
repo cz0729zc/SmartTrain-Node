@@ -85,17 +85,17 @@ void app_main(void)
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
     // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
-    // ESP_ERROR_CHECK(sensor_queue_init(5));
+    ESP_ERROR_CHECK(sensor_queue_init(5));
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
-    ESP_ERROR_CHECK(app_lvgl_init());
-    app_lvgl_demo();  // 显示测试界面
+    // ESP_ERROR_CHECK(app_lvgl_init());
+    // app_lvgl_demo();  // 显示测试界面
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());
 
     // // 4. 启动网络管理模块 (WiFi + MQTT)
-    // ESP_ERROR_CHECK(app_network_start());
+    ESP_ERROR_CHECK(app_network_start());
 
     // // 5. 启动 RFID 模块
     // app_rfid_set_card_callback(on_rfid_card_detected, NULL);
