@@ -10,7 +10,7 @@ static const char *TAG = "app_sensor";
 
 // 传感器配置
 #define DHT_SENSOR_TYPE DRIVER_DHT_TYPE_DHT11
-#define SENSOR_GPIO GPIO_NUM_4
+#define SENSOR_GPIO GPIO_NUM_6
 #define SENSOR_READ_INTERVAL_MS 2000  // 采集间隔 2 秒
 
 static TaskHandle_t s_sensor_task_handle = NULL;

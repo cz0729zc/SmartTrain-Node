@@ -8,15 +8,21 @@
 
 static const char *TAG = "attendance_profile";
 
+/* NVS 命名空间与键名 */
 #define PROFILE_NAMESPACE "att_profile"
 #define PROFILE_BLOB_KEY  "profiles"
+/* 当前实现采用内存数组 + 整体 blob 持久化，适合小规模档案 */
 #define PROFILE_MAX_COUNT 128
 
+/* 运行时缓存 */
 static attendance_profile_t s_profiles[PROFILE_MAX_COUNT];
 static size_t s_profile_count = 0;
 static bool s_inited = false;
 static nvs_handle_t s_nvs = 0;
 
+/**
+ * @brief 将内存中的档案数组整体写回 NVS
+ */
 static esp_err_t save_profiles_to_nvs(void)
 {
     esp_err_t ret = nvs_set_blob(s_nvs, PROFILE_BLOB_KEY, s_profiles,
@@ -59,6 +65,7 @@ esp_err_t attendance_profile_init(void)
         return ret;
     }
 
+    // blob 大小异常时按损坏处理并重建空库
     if (required_size % sizeof(attendance_profile_t) != 0) {
         ESP_LOGW(TAG, "档案数据损坏，已清空");
         s_profile_count = 0;
@@ -94,6 +101,7 @@ esp_err_t attendance_profile_upsert(const char *uid, const char *student_id, con
         return ESP_ERR_INVALID_ARG;
     }
 
+    // 先查重，命中则更新
     for (size_t i = 0; i < s_profile_count; i++) {
         if (strcmp(s_profiles[i].uid, uid) == 0) {
             strlcpy(s_profiles[i].student_id, student_id, sizeof(s_profiles[i].student_id));
@@ -103,6 +111,7 @@ esp_err_t attendance_profile_upsert(const char *uid, const char *student_id, con
         }
     }
 
+    // 未命中则新增
     if (s_profile_count >= PROFILE_MAX_COUNT) {
         ESP_LOGE(TAG, "档案容量已满");
         return ESP_ERR_NO_MEM;

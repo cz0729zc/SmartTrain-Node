@@ -5,9 +5,14 @@
 #include "app_network.h"
 #include "app_rfid.h"
 #include "app_co2.h"
+#include "app_display.h"
 #include "app_lvgl.h"
 #include "attendance_profile.h"
 #include <string.h>
+#include "app_display.h"
+
+/* 触摸联调时建议只启用一种显示/输入路径，避免并发读取触摸设备 */
+#define RUN_RAW_TOUCH_TEST 1
 
 static const char *TAG = "main";
 
@@ -28,6 +33,13 @@ static void print_block_data(const char *label, const uint8_t *data, size_t len)
  */
 static void rfid_read_write_test(void)
 {
+#if RUN_RAW_TOUCH_TEST
+    ESP_ERROR_CHECK(app_display_init());
+    app_display_test();  // 原始触摸测试：串口打印触摸坐标
+#else
+    ESP_ERROR_CHECK(app_lvgl_init());
+    app_lvgl_demo();     // LVGL 触摸测试：按钮/界面交互
+#endif
     const uint8_t test_block = 4;  // 使用块 4 (Sector 1 的第一个数据块，安全)
     uint8_t read_before[16] = {0};
     uint8_t read_after[16] = {0};
@@ -91,7 +103,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // 1.1 初始化本地学员档案映射 (UID -> 学号/姓名)
+    // 1.1 初始化本地学员档案映射 (UID -> 学号/姓名)    
     ESP_ERROR_CHECK(attendance_profile_init());
 
     // 示例: 首次可手动写入测试档案，确认刷卡后能识别姓名
@@ -103,14 +115,14 @@ void app_main(void)
     ESP_ERROR_CHECK(sensor_queue_init(5));
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
-    // ESP_ERROR_CHECK(app_lvgl_init());
-    // app_lvgl_demo();  // 显示测试界面
+    ESP_ERROR_CHECK(app_lvgl_init());
+    app_lvgl_demo();  // 显示测试界面
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());
 
     // // 4. 启动网络管理模块 (WiFi + MQTT)
-    ESP_ERROR_CHECK(app_network_start());
+    // ESP_ERROR_CHECK(app_network_start());
 
     // // 5. 启动 RFID 模块
     // app_rfid_set_card_callback(on_rfid_card_detected, NULL);
