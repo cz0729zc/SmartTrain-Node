@@ -7,14 +7,35 @@
 #include "app_co2.h"
 #include "app_display.h"
 #include "app_lvgl.h"
+#include "app_fingerprint.h"
 #include "attendance_profile.h"
 #include <string.h>
 #include "app_display.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 /* 触摸联调时建议只启用一种显示/输入路径，避免并发读取触摸设备 */
 #define RUN_RAW_TOUCH_TEST 1
+#define RUN_AS608_SELF_TEST 1
+#define RUN_AS608_ENROLL_DEMO 1
+#define RUN_AS608_IDENTIFY_DEMO 1
+#define AS608_ENROLL_PAGE_ID 0
 
 static const char *TAG = "main";
+
+static void log_fingerprint_result(const char *phase, esp_err_t ret, uint8_t confirm)
+{
+    if (ret == ESP_OK && confirm == DRIVER_AS608_CONFIRM_OK) {
+        ESP_LOGI(TAG, "%s 成功", phase);
+        return;
+    }
+
+    ESP_LOGW(TAG, "%s 失败: ret=%s, confirm=0x%02X(%s)",
+             phase,
+             esp_err_to_name(ret),
+             confirm,
+             app_fingerprint_confirm_message(confirm));
+}
 
 /**
  * @brief 打印块数据 (16 字节)
@@ -93,8 +114,79 @@ static void on_rfid_card_detected(const rfid_card_info_t *card, void *arg)
     // rfid_read_write_test();
 }
 
+static bool fingerprint_self_test(void)
+{
+    esp_err_t ret;
+    uint8_t confirm = 0xFF;
+    driver_as608_sys_para_t para = {0};
+
+    ret = app_fingerprint_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "AS608 初始化失败: %s", esp_err_to_name(ret));
+        return false;
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        ret = app_fingerprint_get_sys_para(&para, &confirm);
+        if (ret == ESP_OK && confirm == DRIVER_AS608_CONFIRM_OK) {
+            ESP_LOGI(TAG, "AS608 参数: 容量=%u, 安全等级=%u, 地址=0x%08lX, 波特率=%lu",
+                     para.max_templates,
+                     para.security_level,
+                     (unsigned long)para.device_addr,
+                     (unsigned long)(para.baud_factor_n * 9600U));
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+
+    ESP_LOGW(TAG, "读取 AS608 参数失败: ret=%s, confirm=0x%02X(%s)",
+             esp_err_to_name(ret), confirm, app_fingerprint_confirm_message(confirm));
+    ESP_LOGW(TAG, "AS608 自检未通过，已跳过注册/识别演示任务。请优先检查: 1) 模块 TX->GPIO16, RX->GPIO17; 2) 5V/3.3V 供电与 GND 共地; 3) 模块串口波特率是否为 57600");
+    return false;
+}
+
+static void fingerprint_demo_task(void *arg)
+{
+    (void)arg;
+
+#if RUN_AS608_ENROLL_DEMO
+    {
+        uint8_t confirm = 0xFF;
+        ESP_LOGI(TAG, "[AS608] 开始注册流程, page_id=%u", (unsigned)AS608_ENROLL_PAGE_ID);
+        ESP_LOGI(TAG, "[AS608] 请同一手指按压两次传感器进行建模");
+        esp_err_t ret = app_fingerprint_enroll(AS608_ENROLL_PAGE_ID, &confirm);
+        log_fingerprint_result("注册流程", ret, confirm);
+    }
+#endif
+
+#if RUN_AS608_IDENTIFY_DEMO
+    ESP_LOGI(TAG, "[AS608] 进入识别循环, 请按压已录入手指");
+    while (true) {
+        uint8_t confirm = 0xFF;
+        driver_as608_search_result_t result = {0};
+        esp_err_t ret = app_fingerprint_identify(&result, &confirm);
+
+        if (ret == ESP_OK && confirm == DRIVER_AS608_CONFIRM_OK) {
+            ESP_LOGI(TAG, "识别成功: page_id=%u, score=%u",
+                     (unsigned)result.page_id,
+                     (unsigned)result.match_score);
+        } else if (ret == ESP_OK && confirm == DRIVER_AS608_CONFIRM_NO_FINGER) {
+            // 无手指时静默等待，避免刷屏。
+        } else {
+            log_fingerprint_result("识别流程", ret, confirm);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(300));
+    }
+#else
+    vTaskDelete(NULL);
+#endif
+}
+
 void app_main(void)
 {
+    bool fp_ready = true;
+
     // 1. 系统级初始化 (NVS, Log, BSP...)
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -111,12 +203,22 @@ void app_main(void)
 
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
+#if RUN_AS608_SELF_TEST
+    fp_ready = fingerprint_self_test();
+#endif
+
+#if RUN_AS608_ENROLL_DEMO || RUN_AS608_IDENTIFY_DEMO
+    if (fp_ready) {
+        xTaskCreate(fingerprint_demo_task, "fp_demo", 4096, NULL, 5, NULL);
+    }
+#endif
+
     // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
     ESP_ERROR_CHECK(sensor_queue_init(5));
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
-    ESP_ERROR_CHECK(app_lvgl_init());
-    app_lvgl_demo();  // 显示测试界面
+    // ESP_ERROR_CHECK(app_lvgl_init());
+    // app_lvgl_demo();  // 显示测试界面
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());
