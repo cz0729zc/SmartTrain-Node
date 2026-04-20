@@ -8,6 +8,12 @@
 
 static const char *TAG = "attendance_profile";
 
+typedef struct {
+    char uid[ATTENDANCE_UID_MAX_LEN];
+    char student_id[ATTENDANCE_STUDENT_ID_MAX_LEN];
+    char name[ATTENDANCE_NAME_MAX_LEN];
+} attendance_profile_v1_t;
+
 /* NVS 命名空间与键名 */
 #define PROFILE_NAMESPACE "att_profile"
 #define PROFILE_BLOB_KEY  "profiles"
@@ -39,6 +45,34 @@ static esp_err_t save_profiles_to_nvs(void)
     return ret;
 }
 
+static void init_profile_defaults(attendance_profile_t *profile)
+{
+    profile->face_user_id = ATTENDANCE_FACE_ID_UNBOUND;
+    profile->finger_page_id = ATTENDANCE_FINGER_ID_UNBOUND;
+    profile->has_face_bound = false;
+    profile->has_finger_bound = false;
+}
+
+static int find_index_by_uid(const char *uid)
+{
+    for (size_t i = 0; i < s_profile_count; i++) {
+        if (strcmp(s_profiles[i].uid, uid) == 0) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+static int find_index_by_student_id(const char *student_id)
+{
+    for (size_t i = 0; i < s_profile_count; i++) {
+        if (strcmp(s_profiles[i].student_id, student_id) == 0) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
 esp_err_t attendance_profile_init(void)
 {
     if (s_inited) {
@@ -65,8 +99,35 @@ esp_err_t attendance_profile_init(void)
         return ret;
     }
 
-    // blob 大小异常时按损坏处理并重建空库
+    // 兼容旧版本结构体（仅 uid/student_id/name）
     if (required_size % sizeof(attendance_profile_t) != 0) {
+        if (required_size % sizeof(attendance_profile_v1_t) == 0) {
+            attendance_profile_v1_t old_profiles[PROFILE_MAX_COUNT] = {0};
+            size_t old_count = required_size / sizeof(attendance_profile_v1_t);
+            if (old_count > PROFILE_MAX_COUNT) {
+                old_count = PROFILE_MAX_COUNT;
+            }
+
+            size_t old_size = old_count * sizeof(attendance_profile_v1_t);
+            ret = nvs_get_blob(s_nvs, PROFILE_BLOB_KEY, old_profiles, &old_size);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "读取旧版档案失败: %s", esp_err_to_name(ret));
+                return ret;
+            }
+
+            s_profile_count = old_count;
+            for (size_t i = 0; i < s_profile_count; ++i) {
+                strlcpy(s_profiles[i].uid, old_profiles[i].uid, sizeof(s_profiles[i].uid));
+                strlcpy(s_profiles[i].student_id, old_profiles[i].student_id, sizeof(s_profiles[i].student_id));
+                strlcpy(s_profiles[i].name, old_profiles[i].name, sizeof(s_profiles[i].name));
+                init_profile_defaults(&s_profiles[i]);
+            }
+
+            s_inited = true;
+            ESP_LOGW(TAG, "检测到旧版档案，已迁移数量=%u", (unsigned)s_profile_count);
+            return save_profiles_to_nvs();
+        }
+
         ESP_LOGW(TAG, "档案数据损坏，已清空");
         s_profile_count = 0;
         s_inited = true;
@@ -97,21 +158,18 @@ esp_err_t attendance_profile_upsert(const char *uid, const char *student_id, con
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (uid == NULL || student_id == NULL || name == NULL || uid[0] == '\0' || student_id[0] == '\0' || name[0] == '\0') {
+    if (uid == NULL || student_id == NULL || name == NULL || uid[0] == '\0' || student_id[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
     }
 
-    // 先查重，命中则更新
-    for (size_t i = 0; i < s_profile_count; i++) {
-        if (strcmp(s_profiles[i].uid, uid) == 0) {
-            strlcpy(s_profiles[i].student_id, student_id, sizeof(s_profiles[i].student_id));
-            strlcpy(s_profiles[i].name, name, sizeof(s_profiles[i].name));
-            ESP_LOGI(TAG, "更新档案 UID=%s 学号=%s 姓名=%s", uid, s_profiles[i].student_id, s_profiles[i].name);
-            return save_profiles_to_nvs();
-        }
+    int idx = find_index_by_uid(uid);
+    if (idx >= 0) {
+        strlcpy(s_profiles[idx].student_id, student_id, sizeof(s_profiles[idx].student_id));
+        strlcpy(s_profiles[idx].name, name, sizeof(s_profiles[idx].name));
+        ESP_LOGI(TAG, "更新档案 UID=%s 学号=%s", uid, s_profiles[idx].student_id);
+        return save_profiles_to_nvs();
     }
 
-    // 未命中则新增
     if (s_profile_count >= PROFILE_MAX_COUNT) {
         ESP_LOGE(TAG, "档案容量已满");
         return ESP_ERR_NO_MEM;
@@ -120,9 +178,10 @@ esp_err_t attendance_profile_upsert(const char *uid, const char *student_id, con
     strlcpy(s_profiles[s_profile_count].uid, uid, sizeof(s_profiles[s_profile_count].uid));
     strlcpy(s_profiles[s_profile_count].student_id, student_id, sizeof(s_profiles[s_profile_count].student_id));
     strlcpy(s_profiles[s_profile_count].name, name, sizeof(s_profiles[s_profile_count].name));
+    init_profile_defaults(&s_profiles[s_profile_count]);
     s_profile_count++;
 
-    ESP_LOGI(TAG, "新增档案 UID=%s 学号=%s 姓名=%s", uid, student_id, name);
+    ESP_LOGI(TAG, "新增档案 UID=%s 学号=%s", uid, student_id);
     return save_profiles_to_nvs();
 }
 
@@ -136,14 +195,110 @@ esp_err_t attendance_profile_find_by_uid(const char *uid, attendance_profile_t *
         return ESP_ERR_INVALID_ARG;
     }
 
-    for (size_t i = 0; i < s_profile_count; i++) {
-        if (strcmp(s_profiles[i].uid, uid) == 0) {
+    int idx = find_index_by_uid(uid);
+    if (idx >= 0) {
+        *out_profile = s_profiles[idx];
+        return ESP_OK;
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t attendance_profile_find_by_student_id(const char *student_id,
+                                                attendance_profile_t *out_profile)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (student_id == NULL || out_profile == NULL || student_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int idx = find_index_by_student_id(student_id);
+    if (idx >= 0) {
+        *out_profile = s_profiles[idx];
+        return ESP_OK;
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t attendance_profile_find_by_face_id(uint16_t face_user_id,
+                                             attendance_profile_t *out_profile)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (out_profile == NULL || face_user_id == ATTENDANCE_FACE_ID_UNBOUND) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    for (size_t i = 0; i < s_profile_count; ++i) {
+        if (s_profiles[i].has_face_bound && s_profiles[i].face_user_id == face_user_id) {
             *out_profile = s_profiles[i];
             return ESP_OK;
         }
     }
 
     return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t attendance_profile_find_by_finger_page(uint16_t finger_page_id,
+                                                 attendance_profile_t *out_profile)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (out_profile == NULL || finger_page_id == ATTENDANCE_FINGER_ID_UNBOUND) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    for (size_t i = 0; i < s_profile_count; ++i) {
+        if (s_profiles[i].has_finger_bound && s_profiles[i].finger_page_id == finger_page_id) {
+            *out_profile = s_profiles[i];
+            return ESP_OK;
+        }
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t attendance_profile_bind_face_id(const char *uid, uint16_t face_user_id)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (uid == NULL || uid[0] == '\0' || face_user_id == ATTENDANCE_FACE_ID_UNBOUND) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int idx = find_index_by_uid(uid);
+    if (idx < 0) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    s_profiles[idx].face_user_id = face_user_id;
+    s_profiles[idx].has_face_bound = true;
+    return save_profiles_to_nvs();
+}
+
+esp_err_t attendance_profile_bind_finger_page(const char *uid, uint16_t finger_page_id)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (uid == NULL || uid[0] == '\0' || finger_page_id == ATTENDANCE_FINGER_ID_UNBOUND) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int idx = find_index_by_uid(uid);
+    if (idx < 0) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    s_profiles[idx].finger_page_id = finger_page_id;
+    s_profiles[idx].has_finger_bound = true;
+    return save_profiles_to_nvs();
 }
 
 size_t attendance_profile_count(void)
