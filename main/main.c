@@ -8,6 +8,7 @@
 #include "app_display.h"
 #include "app_lvgl.h"
 #include "app_fingerprint.h"
+#include "app_face.h"
 #include "attendance_profile.h"
 #include <string.h>
 #include "app_display.h"
@@ -16,10 +17,16 @@
 
 /* 触摸联调时建议只启用一种显示/输入路径，避免并发读取触摸设备 */
 #define RUN_RAW_TOUCH_TEST 1
+#define RUN_FM225_SELF_TEST 1
 #define RUN_AS608_SELF_TEST 1
 #define RUN_AS608_ENROLL_DEMO 1
 #define RUN_AS608_IDENTIFY_DEMO 1
 #define AS608_ENROLL_PAGE_ID 0
+
+#define FM225_UART_NUM      UART_NUM_1
+#define FM225_UART_TX_GPIO  GPIO_NUM_11
+#define FM225_UART_RX_GPIO  GPIO_NUM_10
+#define FM225_UART_BAUD     115200
 
 static const char *TAG = "main";
 
@@ -145,6 +152,61 @@ static bool fingerprint_self_test(void)
     return false;
 }
 
+static const char *fm225_status_message(driver_fm225_status_t status)
+{
+    switch (status) {
+        case DRIVER_FM225_STATUS_IDLE: return "IDLE";
+        case DRIVER_FM225_STATUS_BUSY: return "BUSY";
+        case DRIVER_FM225_STATUS_ERROR: return "ERROR";
+        case DRIVER_FM225_STATUS_INVALID: return "INVALID";
+        default: return "UNKNOWN";
+    }
+}
+
+static bool fm225_self_test(void)
+{
+    app_face_config_t cfg = {
+        .uart_num = FM225_UART_NUM,
+        .tx_gpio = FM225_UART_TX_GPIO,
+        .rx_gpio = FM225_UART_RX_GPIO,
+        .baud_rate = FM225_UART_BAUD,
+        .cmd_timeout_ms = 3000,
+    };
+
+    esp_err_t ret = app_face_init(&cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "FM225 初始化失败: %s", esp_err_to_name(ret));
+        return false;
+    }
+
+    ret = app_face_wait_ready(5000);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "FM225 等待 READY 超时/失败: %s", esp_err_to_name(ret));
+        ESP_LOGW(TAG, "请检查连线: 模组 TX -> GPIO10, 模组 RX -> GPIO11, GND 共地, 波特率 115200");
+        return false;
+    }
+
+    driver_fm225_status_t status = DRIVER_FM225_STATUS_INVALID;
+    uint8_t result_code = 0xFF;
+    ret = app_face_get_status(&status, &result_code);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "FM225 GET_STATUS 通信失败: %s", esp_err_to_name(ret));
+        return false;
+    }
+
+    if (result_code != DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGW(TAG, "FM225 GET_STATUS 返回失败: result=%u(%s)",
+                 (unsigned)result_code,
+                 app_face_result_message(result_code));
+        return false;
+    }
+
+    ESP_LOGI(TAG, "FM225 自检通过: status=%u(%s)",
+             (unsigned)status,
+             fm225_status_message(status));
+    return true;
+}
+
 static void fingerprint_demo_task(void *arg)
 {
     (void)arg;
@@ -186,6 +248,7 @@ static void fingerprint_demo_task(void *arg)
 void app_main(void)
 {
     bool fp_ready = true;
+    bool fm225_ready = true;
 
     // 1. 系统级初始化 (NVS, Log, BSP...)
     esp_err_t ret = nvs_flash_init();
@@ -203,8 +266,18 @@ void app_main(void)
 
     ESP_LOGI(TAG, "系统初始化完成，开始创建并发任务...");
 
+#if RUN_FM225_SELF_TEST
+    fm225_ready = fm225_self_test();
+#endif
+
 #if RUN_AS608_SELF_TEST
     fp_ready = fingerprint_self_test();
+#endif
+
+#if RUN_FM225_SELF_TEST
+    if (!fm225_ready) {
+        ESP_LOGW(TAG, "FM225 自检未通过，当前仅保留基础系统流程");
+    }
 #endif
 
 #if RUN_AS608_ENROLL_DEMO || RUN_AS608_IDENTIFY_DEMO
