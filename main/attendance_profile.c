@@ -1,6 +1,7 @@
 #include "attendance_profile.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_log.h"
@@ -102,16 +103,26 @@ esp_err_t attendance_profile_init(void)
     // 兼容旧版本结构体（仅 uid/student_id/name）
     if (required_size % sizeof(attendance_profile_t) != 0) {
         if (required_size % sizeof(attendance_profile_v1_t) == 0) {
-            attendance_profile_v1_t old_profiles[PROFILE_MAX_COUNT] = {0};
             size_t old_count = required_size / sizeof(attendance_profile_v1_t);
             if (old_count > PROFILE_MAX_COUNT) {
                 old_count = PROFILE_MAX_COUNT;
+            }
+
+            /*
+             * 旧版档案缓存使用堆分配，避免在 main_task 栈上放置大数组
+             * 导致日志/锁结构被破坏而触发 LoadProhibited。
+             */
+            attendance_profile_v1_t *old_profiles = calloc(old_count, sizeof(attendance_profile_v1_t));
+            if (old_profiles == NULL) {
+                ESP_LOGE(TAG, "迁移缓存分配失败");
+                return ESP_ERR_NO_MEM;
             }
 
             size_t old_size = old_count * sizeof(attendance_profile_v1_t);
             ret = nvs_get_blob(s_nvs, PROFILE_BLOB_KEY, old_profiles, &old_size);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "读取旧版档案失败: %s", esp_err_to_name(ret));
+                free(old_profiles);
                 return ret;
             }
 
@@ -122,6 +133,7 @@ esp_err_t attendance_profile_init(void)
                 strlcpy(s_profiles[i].name, old_profiles[i].name, sizeof(s_profiles[i].name));
                 init_profile_defaults(&s_profiles[i]);
             }
+            free(old_profiles);
 
             s_inited = true;
             ESP_LOGW(TAG, "检测到旧版档案，已迁移数量=%u", (unsigned)s_profile_count);

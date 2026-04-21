@@ -28,7 +28,10 @@ extern "C" {
 #define BSP_LCD_RST         GPIO_NUM_36
 #define BSP_LCD_BACKLIGHT   GPIO_NUM_40
 
-/* LCD 参数 */
+/*
+ * LCD 物理分辨率（ILI9488 通常为 320x480）。
+ * 横竖屏请通过 LVGL rotation 配置切换，不要改这里的物理参数。
+ */
 #define BSP_LCD_H_RES       320
 #define BSP_LCD_V_RES       480
 #define BSP_LCD_BIT_PER_PIXEL   18
