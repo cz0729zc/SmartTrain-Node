@@ -28,7 +28,7 @@ static const char *TAG = "main";
 #define FM225_UART_BAUD     115200
 
 /* 1=启用 7 页面自动轮播测试，0=正常业务流程 */
-#define RUN_UI_CYCLE_TEST   0
+#define RUN_UI_CYCLE_TEST   1
 
 static bool s_face_ready = false;
 static bool s_finger_ready = false;
@@ -273,16 +273,16 @@ void app_main(void)
     }
 
     // 集中执行可选自检与 demo 任务（由 app_test_hub.c 的 RUN_* 宏控制）
-    app_test_hub_run_startup_tests();
-    app_test_hub_start_optional_tasks();
+    // app_test_hub_run_startup_tests();
+    // app_test_hub_start_optional_tasks();
 
     // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
     // ESP_ERROR_CHECK(sensor_queue_init(5));
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
-    // ESP_ERROR_CHECK(app_lvgl_init());
-    // app_lvgl_set_action_callback(on_ui_action, NULL);
-    // app_lvgl_demo();
+    ESP_ERROR_CHECK(app_lvgl_init());
+    app_lvgl_set_action_callback(on_ui_action, NULL);
+    app_lvgl_demo();
 
 #if RUN_UI_CYCLE_TEST
     app_lvgl_start_cycle_test(3000);
