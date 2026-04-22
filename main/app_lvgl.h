@@ -80,6 +80,12 @@ void app_lvgl_update_result(bool success, const char *method, const char *reason
  */
 void app_lvgl_set_action_callback(app_lvgl_action_cb_t callback, void *arg);
 
+/**
+ * @brief 启动 7 页面轮播测试（用于 UI 观感巡检）
+ * @param interval_ms 页面切换周期，单位毫秒
+ */
+void app_lvgl_start_cycle_test(uint32_t interval_ms);
+
 #ifdef __cplusplus
 }
 #endif

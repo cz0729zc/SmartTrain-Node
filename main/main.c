@@ -27,6 +27,9 @@ static const char *TAG = "main";
 #define FM225_UART_RX_GPIO  GPIO_NUM_10
 #define FM225_UART_BAUD     115200
 
+/* 1=启用 7 页面自动轮播测试，0=正常业务流程 */
+#define RUN_UI_CYCLE_TEST   0
+
 static bool s_face_ready = false;
 static bool s_finger_ready = false;
 static bool s_has_active_profile = false;
@@ -270,16 +273,23 @@ void app_main(void)
     }
 
     // 集中执行可选自检与 demo 任务（由 app_test_hub.c 的 RUN_* 宏控制）
-    // app_test_hub_run_startup_tests();
-    // app_test_hub_start_optional_tasks();
+    app_test_hub_run_startup_tests();
+    app_test_hub_start_optional_tasks();
 
     // 2. 初始化传感器数据队列 (用于 sensor_task 与 network_task 通信)
     // ESP_ERROR_CHECK(sensor_queue_init(5));
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
-    ESP_ERROR_CHECK(app_lvgl_init());
-    app_lvgl_set_action_callback(on_ui_action, NULL);
-    app_lvgl_demo();
+    // ESP_ERROR_CHECK(app_lvgl_init());
+    // app_lvgl_set_action_callback(on_ui_action, NULL);
+    // app_lvgl_demo();
+
+#if RUN_UI_CYCLE_TEST
+    app_lvgl_start_cycle_test(3000);
+    ESP_LOGW(TAG, "当前运行在 UI 轮播测试模式：已跳过 RFID/人脸/指纹真实流程初始化");
+    ESP_LOGI(TAG, "app_main 执行完毕 (即将在空闲时自行删除)");
+    return;
+#endif
 
     app_face_config_t face_cfg = {
         .uart_num = FM225_UART_NUM,
@@ -301,7 +311,10 @@ void app_main(void)
         ESP_LOGW(TAG, "指纹模块未就绪，后续指纹打卡将失败提示");
     }
 
-    app_lvgl_dispatch_event(APP_LVGL_EVT_SELFCHECK_DONE);
+    app_test_hub_face_enroll_test("zhangsan", false, 10);
+    app_test_hub_face_identify_test(8);
+
+    // app_lvgl_dispatch_event(APP_LVGL_EVT_SELFCHECK_DONE);
 
     // // 3. 启动传感器应用模块
     // ESP_ERROR_CHECK(app_sensor_start());
@@ -310,8 +323,8 @@ void app_main(void)
     // ESP_ERROR_CHECK(app_network_start());
 
     // 5. 启动 RFID 模块（刷卡后驱动 UI 进入身份确认）
-    app_rfid_set_card_callback(on_rfid_card_detected, NULL);
-    ESP_ERROR_CHECK(app_rfid_start());
+    // app_rfid_set_card_callback(on_rfid_card_detected, NULL);
+    // ESP_ERROR_CHECK(app_rfid_start());
 
     // // 6. 启动 CO2 采集模块
     // ESP_ERROR_CHECK(app_co2_start());

@@ -16,8 +16,8 @@
  * - 日常业务联调：全部设为 0
  * - 单模块自检：只打开对应 RUN_* 宏
  */
-#define RUN_RAW_TOUCH_TEST 1
-#define RUN_FM225_SELF_TEST 0
+#define RUN_RAW_TOUCH_TEST 0
+#define RUN_FM225_SELF_TEST 1
 #define RUN_AS608_SELF_TEST 0
 #define RUN_AS608_ENROLL_DEMO 0
 #define RUN_AS608_IDENTIFY_DEMO 0
@@ -56,6 +56,46 @@ static void print_block_data(const char *label, const uint8_t *data, size_t len)
         printf("%02X ", data[i]);
     }
     printf("\n");
+}
+
+static esp_err_t ensure_fm225_link(uint32_t ready_timeout_ms)
+{
+    app_face_config_t cfg = {
+        .uart_num = FM225_UART_NUM,
+        .tx_gpio = FM225_UART_TX_GPIO,
+        .rx_gpio = FM225_UART_RX_GPIO,
+        .baud_rate = FM225_UART_BAUD,
+        .cmd_timeout_ms = 3000,
+    };
+
+    esp_err_t ret = app_face_init(&cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "FM225 初始化失败: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = app_face_wait_ready(ready_timeout_ms);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "FM225 READY 未收到: %s (继续尝试 GET_STATUS)", esp_err_to_name(ret));
+    }
+
+    driver_fm225_status_t status = DRIVER_FM225_STATUS_INVALID;
+    uint8_t result_code = 0xFF;
+    ret = app_face_get_status(&status, &result_code);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "FM225 GET_STATUS 通信失败: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    if (result_code != DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGE(TAG, "FM225 GET_STATUS 失败: result=%u(%s)",
+                 (unsigned)result_code,
+                 app_face_result_message(result_code));
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "FM225 链路可用，status=%u", (unsigned)status);
+    return ESP_OK;
 }
 
 void app_test_hub_rfid_read_write_test(void)
@@ -101,6 +141,79 @@ void app_test_hub_rfid_read_write_test(void)
     }
 
     ESP_LOGI(TAG, "========== RFID 读写测试结束 ==========");
+}
+
+void app_test_hub_face_enroll_test(const char *user_name, bool admin, uint8_t timeout_s)
+{
+    if (timeout_s == 0) {
+        timeout_s = 8;
+    }
+
+    const char *name = (user_name != NULL && user_name[0] != '\0') ? user_name : "TEST_USER";
+
+    esp_err_t ret = ensure_fm225_link(5000);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "跳过人脸注册测试：FM225 链路不可用");
+        return;
+    }
+
+    uint16_t user_id = 0;
+    uint8_t result_code = 0xFF;
+
+    ESP_LOGI(TAG, "[FM225] 开始注册测试: name=%s admin=%u timeout=%us",
+             name,
+             (unsigned)(admin ? 1U : 0U),
+             (unsigned)timeout_s);
+
+    ret = app_face_enroll_single(name, admin, timeout_s, &user_id, &result_code);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "[FM225] 注册通信失败: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    if (result_code == DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGI(TAG, "[FM225] 注册成功: user_id=%u", (unsigned)user_id);
+    } else {
+        ESP_LOGW(TAG, "[FM225] 注册失败: result=%u(%s)",
+                 (unsigned)result_code,
+                 app_face_result_message(result_code));
+    }
+}
+
+void app_test_hub_face_identify_test(uint8_t timeout_s)
+{
+    if (timeout_s == 0) {
+        timeout_s = 8;
+    }
+
+    esp_err_t ret = ensure_fm225_link(5000);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "跳过人脸识别测试：FM225 链路不可用");
+        return;
+    }
+
+    driver_fm225_verify_result_t verify = {0};
+    uint8_t result_code = 0xFF;
+
+    ESP_LOGI(TAG, "[FM225] 开始识别测试: timeout=%us，请正视模块", (unsigned)timeout_s);
+
+    ret = app_face_verify_once(timeout_s, &verify, &result_code);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "[FM225] 识别通信失败: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    if (result_code == DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGI(TAG, "[FM225] 识别成功: user_id=%u name=%s admin=%u unlock=%u",
+                 (unsigned)verify.user_id,
+                 verify.user_name,
+                 (unsigned)verify.admin,
+                 (unsigned)verify.unlock_status);
+    } else {
+        ESP_LOGW(TAG, "[FM225] 识别失败: result=%u(%s)",
+                 (unsigned)result_code,
+                 app_face_result_message(result_code));
+    }
 }
 
 #if RUN_AS608_SELF_TEST || RUN_AS608_ENROLL_DEMO || RUN_AS608_IDENTIFY_DEMO
@@ -167,8 +280,7 @@ static bool fm225_self_test(void)
     ret = app_face_wait_ready(5000);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "FM225 等待 READY 超时/失败: %s", esp_err_to_name(ret));
-        ESP_LOGW(TAG, "请检查连线: 模组 TX -> GPIO10, 模组 RX -> GPIO11, GND 共地, 波特率 115200");
-        return false;
+        ESP_LOGW(TAG, "继续执行主动探测 GET_STATUS，用于判断链路是否可通信");
     }
 
     driver_fm225_status_t status = DRIVER_FM225_STATUS_INVALID;
@@ -176,6 +288,7 @@ static bool fm225_self_test(void)
     ret = app_face_get_status(&status, &result_code);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "FM225 GET_STATUS 通信失败: %s", esp_err_to_name(ret));
+        ESP_LOGW(TAG, "请检查连线: 模组 TX -> GPIO10, 模组 RX -> GPIO11, GND 共地, 波特率 115200");
         return false;
     }
 

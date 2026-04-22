@@ -16,6 +16,8 @@
 
 static const char *TAG = "app_lvgl";
 
+#define UI_FONT_CJK (&lv_font_source_han_sans_sc_14_cjk)
+
 /* LVGL 显示和输入设备 */
 static lv_display_t *s_lvgl_disp = NULL;
 static lv_indev_t *s_lvgl_touch = NULL;
@@ -77,7 +79,10 @@ typedef struct {
 
     lv_timer_t *timer_clock;
     lv_timer_t *timer_fallback;
+    lv_timer_t *timer_cycle;
     int fallback_left;
+    bool cycle_mode;
+    uint8_t cycle_idx;
 
     char user_name[32];
     char user_sid[24];
@@ -89,6 +94,22 @@ static app_lvgl_action_cb_t s_action_cb = NULL;
 static void *s_action_arg = NULL;
 
 static void app_lvgl_show_page_locked(app_lvgl_page_t page);
+static void cycle_test_timer_cb(lv_timer_t *timer);
+
+static void apply_cjk_font_recursive(lv_obj_t *obj)
+{
+    if (obj == NULL) {
+        return;
+    }
+
+    lv_obj_set_style_text_font(obj, UI_FONT_CJK, 0);
+
+    uint32_t child_cnt = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < child_cnt; ++i) {
+        lv_obj_t *child = lv_obj_get_child(obj, i);
+        apply_cjk_font_recursive(child);
+    }
+}
 
 static void btn_event_cb(lv_event_t *e)
 {
@@ -125,7 +146,7 @@ static void update_countdown_label(void)
 
     if (s_ui.fallback_left > 0) {
         char buf[32] = {0};
-        snprintf(buf, sizeof(buf), "自动返回主页 %ds", s_ui.fallback_left);
+        snprintf(buf, sizeof(buf), "自动返回主界 %ds", s_ui.fallback_left);
         lv_label_set_text(s_ui.lbl_countdown, buf);
     } else {
         lv_label_set_text(s_ui.lbl_countdown, "");
@@ -134,7 +155,48 @@ static void update_countdown_label(void)
 
 static bool page_need_fallback(app_lvgl_page_t page)
 {
+    if (s_ui.cycle_mode) {
+        return false;
+    }
     return page != APP_LVGL_PAGE_STANDBY;
+}
+
+static void cycle_test_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+
+    static const app_lvgl_page_t order[] = {
+        APP_LVGL_PAGE_BOOT_SELFCHECK,
+        APP_LVGL_PAGE_STANDBY,
+        APP_LVGL_PAGE_USER_CONFIRM,
+        APP_LVGL_PAGE_FACE_PUNCH,
+        APP_LVGL_PAGE_FINGER_PUNCH,
+        APP_LVGL_PAGE_RESULT,
+        APP_LVGL_PAGE_UNREGISTERED,
+    };
+
+    s_ui.cycle_idx = (uint8_t)((s_ui.cycle_idx + 1U) % (sizeof(order) / sizeof(order[0])));
+    app_lvgl_page_t next_page = order[s_ui.cycle_idx];
+
+    if (next_page == APP_LVGL_PAGE_USER_CONFIRM) {
+        app_lvgl_update_user_info("2026001", "张三", "A7C2");
+    } else if (next_page == APP_LVGL_PAGE_RESULT) {
+        bool ok = ((s_ui.cycle_idx & 0x1U) == 0U);
+        app_lvgl_update_result(ok,
+                               ok ? "人脸" : "指纹",
+                               ok ? "" : "识别未匹配",
+                               "10:20:35");
+    } else if (next_page == APP_LVGL_PAGE_UNREGISTERED) {
+        if (s_ui.lbl_unreg_reason != NULL) {
+            if ((s_ui.cycle_idx & 0x1U) == 0U) {
+                lv_label_set_text(s_ui.lbl_unreg_reason, "检测到未注册卡片\n请联系管理员完成建档");
+            } else {
+                lv_label_set_text(s_ui.lbl_unreg_reason, "账号已建档但未绑定生物信息\n请先完成人脸或指纹绑定");
+            }
+        }
+    }
+
+    app_lvgl_show_page_locked(next_page);
 }
 
 static void fallback_timer_cb(lv_timer_t *timer)
@@ -174,7 +236,7 @@ static lv_obj_t *create_back_btn(lv_obj_t *parent)
     lv_obj_align(btn, LV_ALIGN_BOTTOM_LEFT, 8, -8);
     lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_HOME);
     lv_obj_t *lbl = lv_label_create(btn);
-    lv_label_set_text(lbl, "返回主页");
+    lv_label_set_text(lbl, "返回主界");
     lv_obj_center(lbl);
     return btn;
 }
@@ -216,7 +278,7 @@ static void build_page_selfcheck(void)
     lv_obj_align(btn, LV_ALIGN_BOTTOM_RIGHT, -12, -10);
     lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_SELFCHECK_DONE);
     lv_obj_t *lbl = lv_label_create(btn);
-    lv_label_set_text(lbl, "进入主页");
+    lv_label_set_text(lbl, "回主界");
     lv_obj_center(lbl);
 
     create_back_btn(page);
@@ -228,13 +290,13 @@ static void build_page_standby(void)
     s_ui.pages[APP_LVGL_PAGE_STANDBY] = page;
 
     lv_obj_t *title = lv_label_create(page);
-    lv_label_set_text(title, "请刷卡");
+    lv_label_set_text(title, "等待考勤");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(title, UI_FONT_CJK, 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -36);
 
     lv_obj_t *sub = lv_label_create(page);
-    lv_label_set_text(sub, "刷卡后选择人脸或指纹打卡");
+    lv_label_set_text(sub, "下一步: FACE / FINGER");
     lv_obj_set_style_text_color(sub, lv_color_hex(0xB8CCDD), 0);
     lv_obj_align(sub, LV_ALIGN_CENTER, 0, 2);
 
@@ -243,7 +305,7 @@ static void build_page_standby(void)
     lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -12);
     lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_CARD_DETECTED);
     lv_obj_t *lbl = lv_label_create(btn);
-    lv_label_set_text(lbl, "模拟刷卡");
+    lv_label_set_text(lbl, "下一步");
     lv_obj_center(lbl);
 }
 
@@ -279,7 +341,7 @@ static void build_page_confirm(void)
     lv_obj_align(btn_face, LV_ALIGN_RIGHT_MID, -12, -34);
     lv_obj_add_event_cb(btn_face, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_SELECT_FACE);
     lv_obj_t *face_txt = lv_label_create(btn_face);
-    lv_label_set_text(face_txt, "人脸打卡");
+    lv_label_set_text(face_txt, "FACE 考勤");
     lv_obj_center(face_txt);
 
     lv_obj_t *btn_finger = lv_btn_create(page);
@@ -287,7 +349,7 @@ static void build_page_confirm(void)
     lv_obj_align(btn_finger, LV_ALIGN_RIGHT_MID, -12, 34);
     lv_obj_add_event_cb(btn_finger, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_SELECT_FINGER);
     lv_obj_t *finger_txt = lv_label_create(btn_finger);
-    lv_label_set_text(finger_txt, "指纹打卡");
+    lv_label_set_text(finger_txt, "FINGER 考勤");
     lv_obj_center(finger_txt);
 
     create_back_btn(page);
@@ -299,7 +361,7 @@ static void build_page_face(void)
     s_ui.pages[APP_LVGL_PAGE_FACE_PUNCH] = page;
 
     lv_obj_t *title = lv_label_create(page);
-    lv_label_set_text(title, "人脸打卡");
+    lv_label_set_text(title, "FACE 考勤");
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 12, 8);
 
     lv_obj_t *frame = lv_obj_create(page);
@@ -311,11 +373,11 @@ static void build_page_face(void)
     lv_obj_clear_flag(frame, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *tip = lv_label_create(frame);
-    lv_label_set_text(tip, "请正视设备，保持面部在取景框内");
+    lv_label_set_text(tip, "Please face the camera");
     lv_obj_center(tip);
 
     s_ui.lbl_face_status = lv_label_create(page);
-    lv_label_set_text(s_ui.lbl_face_status, "状态: 检测中");
+    lv_label_set_text(s_ui.lbl_face_status, "STATUS: RUN");
     lv_obj_align(s_ui.lbl_face_status, LV_ALIGN_BOTTOM_MID, 0, -18);
 
     lv_obj_t *ok_btn = lv_btn_create(page);
@@ -323,7 +385,7 @@ static void build_page_face(void)
     lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_RIGHT, -12, -8);
     lv_obj_add_event_cb(ok_btn, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_FACE_OK);
     lv_obj_t *ok_lbl = lv_label_create(ok_btn);
-    lv_label_set_text(ok_lbl, "模拟成功");
+    lv_label_set_text(ok_lbl, "已成功");
     lv_obj_center(ok_lbl);
 
     create_back_btn(page);
@@ -335,16 +397,16 @@ static void build_page_finger(void)
     s_ui.pages[APP_LVGL_PAGE_FINGER_PUNCH] = page;
 
     lv_obj_t *title = lv_label_create(page);
-    lv_label_set_text(title, "指纹打卡");
+    lv_label_set_text(title, "FINGER 考勤");
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 12, 8);
 
     lv_obj_t *icon = lv_label_create(page);
-    lv_label_set_text(icon, "[ 指纹 ]");
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
+    lv_label_set_text(icon, "[ FINGER ]");
+    lv_obj_set_style_text_font(icon, UI_FONT_CJK, 0);
     lv_obj_align(icon, LV_ALIGN_CENTER, 0, -26);
 
     s_ui.lbl_finger_status = lv_label_create(page);
-    lv_label_set_text(s_ui.lbl_finger_status, "状态: 采集中");
+    lv_label_set_text(s_ui.lbl_finger_status, "STATUS: RUN");
     lv_obj_align(s_ui.lbl_finger_status, LV_ALIGN_CENTER, 0, 18);
 
     lv_obj_t *ok_btn = lv_btn_create(page);
@@ -352,7 +414,7 @@ static void build_page_finger(void)
     lv_obj_align(ok_btn, LV_ALIGN_BOTTOM_RIGHT, -12, -8);
     lv_obj_add_event_cb(ok_btn, btn_event_cb, LV_EVENT_CLICKED, (void *)(intptr_t)APP_LVGL_EVT_FINGER_OK);
     lv_obj_t *ok_lbl = lv_label_create(ok_btn);
-    lv_label_set_text(ok_lbl, "模拟成功");
+    lv_label_set_text(ok_lbl, "已成功");
     lv_obj_center(ok_lbl);
 
     create_back_btn(page);
@@ -418,7 +480,7 @@ static void build_ui_layout(void)
     lv_obj_align(s_ui.lbl_clock, LV_ALIGN_LEFT_MID, 10, 0);
 
     s_ui.lbl_modules = lv_label_create(s_ui.top_bar);
-    lv_label_set_text(s_ui.lbl_modules, "RFID|人脸|指纹|网络");
+    lv_label_set_text(s_ui.lbl_modules, "RFID|FACE|FINGER|NET");
     lv_obj_align(s_ui.lbl_modules, LV_ALIGN_CENTER, 0, 0);
 
     s_ui.lbl_net = lv_label_create(s_ui.top_bar);
@@ -441,7 +503,7 @@ static void build_ui_layout(void)
     lv_obj_clear_flag(s_ui.bottom_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     s_ui.lbl_hint = lv_label_create(s_ui.bottom_bar);
-    lv_label_set_text(s_ui.lbl_hint, "操作提示: 点击按钮进行下一步");
+    lv_label_set_text(s_ui.lbl_hint, "提示: 点击按钮继续");
     lv_obj_align(s_ui.lbl_hint, LV_ALIGN_LEFT_MID, 10, 0);
 
     s_ui.lbl_countdown = lv_label_create(s_ui.bottom_bar);
@@ -455,6 +517,8 @@ static void build_ui_layout(void)
     build_page_finger();
     build_page_result();
     build_page_unregistered();
+
+    apply_cjk_font_recursive(s_ui.screen);
 }
 
 static void set_bottom_hint_for_page(app_lvgl_page_t page)
@@ -465,13 +529,13 @@ static void set_bottom_hint_for_page(app_lvgl_page_t page)
 
     switch (page) {
         case APP_LVGL_PAGE_BOOT_SELFCHECK:
-            lv_label_set_text(s_ui.lbl_hint, "启动检查完成后进入主页");
+            lv_label_set_text(s_ui.lbl_hint, "启动检查完成后回主界");
             break;
         case APP_LVGL_PAGE_STANDBY:
-            lv_label_set_text(s_ui.lbl_hint, "请刷卡后选择打卡方式");
+            lv_label_set_text(s_ui.lbl_hint, "请选择考勤方式");
             break;
         case APP_LVGL_PAGE_USER_CONFIRM:
-            lv_label_set_text(s_ui.lbl_hint, "请选择人脸打卡或指纹打卡");
+            lv_label_set_text(s_ui.lbl_hint, "请选择 FACE 或 FINGER");
             break;
         case APP_LVGL_PAGE_FACE_PUNCH:
             lv_label_set_text(s_ui.lbl_hint, "请正视设备进行识别");
@@ -480,7 +544,7 @@ static void set_bottom_hint_for_page(app_lvgl_page_t page)
             lv_label_set_text(s_ui.lbl_hint, "请按压指纹区域");
             break;
         case APP_LVGL_PAGE_RESULT:
-            lv_label_set_text(s_ui.lbl_hint, "查看结果后可返回主页");
+            lv_label_set_text(s_ui.lbl_hint, "查看结果后可回主界");
             break;
         case APP_LVGL_PAGE_UNREGISTERED:
             lv_label_set_text(s_ui.lbl_hint, "当前卡片未注册或未绑定");
@@ -529,13 +593,13 @@ static void app_lvgl_dispatch_event_locked(app_lvgl_event_t event)
             break;
         case APP_LVGL_EVT_SELECT_FACE:
             if (s_ui.lbl_face_status != NULL) {
-                lv_label_set_text(s_ui.lbl_face_status, "状态: 检测中");
+                lv_label_set_text(s_ui.lbl_face_status, "STATUS: RUN");
             }
             app_lvgl_show_page_locked(APP_LVGL_PAGE_FACE_PUNCH);
             break;
         case APP_LVGL_EVT_SELECT_FINGER:
             if (s_ui.lbl_finger_status != NULL) {
-                lv_label_set_text(s_ui.lbl_finger_status, "状态: 采集中");
+                lv_label_set_text(s_ui.lbl_finger_status, "STATUS: RUN");
             }
             app_lvgl_show_page_locked(APP_LVGL_PAGE_FINGER_PUNCH);
             break;
@@ -768,4 +832,32 @@ void app_lvgl_set_action_callback(app_lvgl_action_cb_t callback, void *arg)
 {
     s_action_cb = callback;
     s_action_arg = arg;
+}
+
+void app_lvgl_start_cycle_test(uint32_t interval_ms)
+{
+    if (interval_ms < 1000U) {
+        interval_ms = 1000U;
+    }
+
+    lvgl_port_lock(0);
+
+    if (!s_ui.created) {
+        lvgl_port_unlock();
+        return;
+    }
+
+    s_ui.cycle_mode = true;
+    s_ui.cycle_idx = 0;
+    app_lvgl_show_page_locked(APP_LVGL_PAGE_BOOT_SELFCHECK);
+
+    if (s_ui.timer_cycle != NULL) {
+        lv_timer_del(s_ui.timer_cycle);
+        s_ui.timer_cycle = NULL;
+    }
+
+    s_ui.timer_cycle = lv_timer_create(cycle_test_timer_cb, interval_ms, NULL);
+    ESP_LOGI(TAG, "已启用 7 页面轮播测试，间隔=%lu ms", (unsigned long)interval_ms);
+
+    lvgl_port_unlock();
 }

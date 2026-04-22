@@ -4,9 +4,12 @@
 
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
+#include "esp_log_buffer.h"
 #include "esp_timer.h"
 
 static const char *TAG = "driver_fm225";
+
+#define DRIVER_FM225_ENABLE_HEX_LOG 1
 
 static bool s_inited = false;
 static uart_port_t s_uart_num = UART_NUM_MAX;
@@ -91,6 +94,23 @@ static esp_err_t recv_frame_until(driver_fm225_frame_t *frame, int64_t deadline_
         return ret;
     }
 
+#if DRIVER_FM225_ENABLE_HEX_LOG
+    uint8_t raw[2 + 3 + DRIVER_FM225_MAX_DATA_LEN + 1] = {0};
+    size_t raw_len = 0;
+    raw[raw_len++] = DRIVER_FM225_SYNC_H;
+    raw[raw_len++] = DRIVER_FM225_SYNC_L;
+    raw[raw_len++] = frame->msg_id;
+    raw[raw_len++] = (uint8_t)(frame->size >> 8);
+    raw[raw_len++] = (uint8_t)frame->size;
+    if (frame->size > 0) {
+        memcpy(&raw[raw_len], frame->data, frame->size);
+        raw_len += frame->size;
+    }
+    raw[raw_len++] = rx_parity;
+    ESP_LOGI(TAG, "RX frame: msg=0x%02X size=%u", frame->msg_id, (unsigned)frame->size);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, raw, raw_len, ESP_LOG_INFO);
+#endif
+
     uint8_t calc = calc_xor(frame->msg_id, frame->size, frame->data);
     if (rx_parity != calc) {
         ESP_LOGW(TAG, "校验失败: rx=0x%02X calc=0x%02X msg=0x%02X", rx_parity, calc, frame->msg_id);
@@ -124,6 +144,11 @@ static esp_err_t send_frame(uint8_t msg_id, const uint8_t *data, uint16_t size)
     }
 
     frame[offset++] = calc_xor(msg_id, size, data);
+
+#if DRIVER_FM225_ENABLE_HEX_LOG
+    ESP_LOGI(TAG, "TX frame: msg=0x%02X size=%u", msg_id, (unsigned)size);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, frame, offset, ESP_LOG_INFO);
+#endif
 
     int w = uart_write_bytes(s_uart_num, frame, offset);
     if (w != (int)offset) {
