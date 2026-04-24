@@ -20,6 +20,13 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
+/* GUI Guider 移植*/
+#include "gui_guider.h"
+#include "custom.h"
+#include "events_init.h"
+
+lv_ui guider_ui;
+
 static const char *TAG = "main";
 
 #define FM225_UART_NUM      UART_NUM_1
@@ -28,7 +35,8 @@ static const char *TAG = "main";
 #define FM225_UART_BAUD     115200
 
 /* 1=启用 7 页面自动轮播测试，0=正常业务流程 */
-#define RUN_UI_CYCLE_TEST   1
+#define RUN_UI_CYCLE_TEST   0
+#define RUN_UI_GUIDER_TEST   1
 
 static bool s_face_ready = false;
 static bool s_finger_ready = false;
@@ -281,8 +289,16 @@ void app_main(void)
 
     // 3. 初始化 LVGL 显示模块 (LCD + 触摸屏)
     ESP_ERROR_CHECK(app_lvgl_init());
+
+#if RUN_UI_GUIDER_TEST
+    setup_ui(&guider_ui);
+    events_init(&guider_ui);
+    return;
+#endif
+
     app_lvgl_set_action_callback(on_ui_action, NULL);
     app_lvgl_demo();
+
 
 #if RUN_UI_CYCLE_TEST
     app_lvgl_start_cycle_test(3000);
@@ -290,6 +306,8 @@ void app_main(void)
     ESP_LOGI(TAG, "app_main 执行完毕 (即将在空闲时自行删除)");
     return;
 #endif
+
+
 
     app_face_config_t face_cfg = {
         .uart_num = FM225_UART_NUM,

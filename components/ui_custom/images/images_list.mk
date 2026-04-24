@@ -1,0 +1,1 @@
+GEN_CSRCS += _RFID_RGB565A8_150x150.c _finger_RGB565A8_200x125.c _face_RGB565A8_200x125.c _face_scan_RGB565A8_150x143.c _finger_scan_RGB565A8_150x143.c _success_RGB565A8_99x90.c _warning_RGB565A8_100x100.c _finger_regiseter_RGB565A8_200x125.c _face_register_RGB565A8_200x125.c

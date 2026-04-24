@@ -156,7 +156,7 @@ esp_err_t bsp_lcd_init(void)
     ESP_LOGI(TAG, "创建 ILI9488 panel (RST:%d)", BSP_LCD_RST);
     esp_lcd_panel_dev_config_t panel_cfg = {
         .reset_gpio_num = BSP_LCD_RST,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,  /* 尝试 RGB 顺序 */
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,  /* 尝试 BGR 顺序 */
         .bits_per_pixel = BSP_LCD_BIT_PER_PIXEL,
         .flags = {
             .reset_active_high = 0,
