@@ -49,28 +49,28 @@ void setup_scr_screen_finger(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_finger_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_finger_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_finger_btn_2
-    ui->screen_finger_btn_2 = lv_button_create(ui->screen_finger_control_bar);
-    lv_obj_set_pos(ui->screen_finger_btn_2, 30, 0);
-    lv_obj_set_size(ui->screen_finger_btn_2, 100, 30);
-    ui->screen_finger_btn_2_label = lv_label_create(ui->screen_finger_btn_2);
-    lv_label_set_text(ui->screen_finger_btn_2_label, "CANCLE/返回");
-    lv_label_set_long_mode(ui->screen_finger_btn_2_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(ui->screen_finger_btn_2_label, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(ui->screen_finger_btn_2, 0, LV_STATE_DEFAULT);
-    lv_obj_set_width(ui->screen_finger_btn_2_label, LV_PCT(100));
+    //Write codes screen_finger_btn_return
+    ui->screen_finger_btn_return = lv_button_create(ui->screen_finger_control_bar);
+    lv_obj_set_pos(ui->screen_finger_btn_return, 30, 0);
+    lv_obj_set_size(ui->screen_finger_btn_return, 100, 30);
+    ui->screen_finger_btn_return_label = lv_label_create(ui->screen_finger_btn_return);
+    lv_label_set_text(ui->screen_finger_btn_return_label, "CANCLE/返回");
+    lv_label_set_long_mode(ui->screen_finger_btn_return_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(ui->screen_finger_btn_return_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_pad_all(ui->screen_finger_btn_return, 0, LV_STATE_DEFAULT);
+    lv_obj_set_width(ui->screen_finger_btn_return_label, LV_PCT(100));
 
-    //Write style for screen_finger_btn_2, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_bg_opa(ui->screen_finger_btn_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui->screen_finger_btn_2, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_grad_dir(ui->screen_finger_btn_2, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui->screen_finger_btn_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_finger_btn_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_finger_btn_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_finger_btn_2, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_finger_btn_2, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_finger_btn_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_finger_btn_2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_finger_btn_return, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_finger_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_finger_btn_return, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_finger_btn_return, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_finger_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_finger_btn_return, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_finger_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_finger_btn_return, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_finger_btn_return, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_finger_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_finger_btn_return, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_finger_status_bar
     ui->screen_finger_status_bar = lv_obj_create(ui->screen_finger);
@@ -213,28 +213,28 @@ void setup_scr_screen_finger(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_finger_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_finger_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_finger_label_10
-    ui->screen_finger_label_10 = lv_label_create(ui->screen_finger_cont_3);
-    lv_obj_set_pos(ui->screen_finger_label_10, 0, 64);
-    lv_obj_set_size(ui->screen_finger_label_10, 196, 32);
-    lv_label_set_text(ui->screen_finger_label_10, "学号:202210120324");
-    lv_label_set_long_mode(ui->screen_finger_label_10, LV_LABEL_LONG_WRAP);
+    //Write codes screen_finger_label_studentID
+    ui->screen_finger_label_studentID = lv_label_create(ui->screen_finger_cont_3);
+    lv_obj_set_pos(ui->screen_finger_label_studentID, 0, 64);
+    lv_obj_set_size(ui->screen_finger_label_studentID, 196, 32);
+    lv_label_set_text(ui->screen_finger_label_studentID, "学号:202210120324");
+    lv_label_set_long_mode(ui->screen_finger_label_studentID, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_finger_label_10, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_finger_label_10, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_finger_label_10, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_finger_label_10, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_finger_label_10, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_finger_label_10, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_finger_label_studentID, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_finger_label_studentID, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_finger_label_studentID, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_finger_label_studentID, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_finger_label_studentID, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_finger_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_finger_label_9
     ui->screen_finger_label_9 = lv_label_create(ui->screen_finger_cont_3);
@@ -247,7 +247,7 @@ void setup_scr_screen_finger(lv_ui *ui)
     lv_obj_set_style_border_width(ui->screen_finger_label_9, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_radius(ui->screen_finger_label_9, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(ui->screen_finger_label_9, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_finger_label_9, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_finger_label_9, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui->screen_finger_label_9, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_text_letter_space(ui->screen_finger_label_9, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_text_line_space(ui->screen_finger_label_9, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
@@ -282,28 +282,28 @@ void setup_scr_screen_finger(lv_ui *ui)
     lv_obj_set_style_pad_left(ui->screen_finger_label_8, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_finger_label_8, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_finger_label_7
-    ui->screen_finger_label_7 = lv_label_create(ui->screen_finger);
-    lv_obj_set_pos(ui->screen_finger_label_7, 369, 258);
-    lv_obj_set_size(ui->screen_finger_label_7, 107, 32);
-    lv_label_set_text(ui->screen_finger_label_7, "Timeout:15s");
-    lv_label_set_long_mode(ui->screen_finger_label_7, LV_LABEL_LONG_WRAP);
+    //Write codes screen_finger_label_Timeout
+    ui->screen_finger_label_Timeout = lv_label_create(ui->screen_finger);
+    lv_obj_set_pos(ui->screen_finger_label_Timeout, 369, 258);
+    lv_obj_set_size(ui->screen_finger_label_Timeout, 107, 32);
+    lv_label_set_text(ui->screen_finger_label_Timeout, "Timeout:15s");
+    lv_label_set_long_mode(ui->screen_finger_label_Timeout, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_finger_label_7, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_finger_label_7, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_finger_label_7, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_finger_label_7, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_finger_label_7, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_finger_label_7, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_finger_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_finger_label_Timeout, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_finger_label_Timeout, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_finger_label_Timeout, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_finger_label_Timeout, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_finger_label_Timeout, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_finger_label_Timeout, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_finger_label_Timeout, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //The custom code of screen_finger.
 

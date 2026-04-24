@@ -49,28 +49,28 @@ void setup_scr_screen_success(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_success_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_success_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_success_btn_3
-    ui->screen_success_btn_3 = lv_button_create(ui->screen_success_control_bar);
-    lv_obj_set_pos(ui->screen_success_btn_3, 30, -1);
-    lv_obj_set_size(ui->screen_success_btn_3, 100, 30);
-    ui->screen_success_btn_3_label = lv_label_create(ui->screen_success_btn_3);
-    lv_label_set_text(ui->screen_success_btn_3_label, "CANCLE/返回");
-    lv_label_set_long_mode(ui->screen_success_btn_3_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(ui->screen_success_btn_3_label, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(ui->screen_success_btn_3, 0, LV_STATE_DEFAULT);
-    lv_obj_set_width(ui->screen_success_btn_3_label, LV_PCT(100));
+    //Write codes screen_success_btn_return
+    ui->screen_success_btn_return = lv_button_create(ui->screen_success_control_bar);
+    lv_obj_set_pos(ui->screen_success_btn_return, 30, -1);
+    lv_obj_set_size(ui->screen_success_btn_return, 100, 30);
+    ui->screen_success_btn_return_label = lv_label_create(ui->screen_success_btn_return);
+    lv_label_set_text(ui->screen_success_btn_return_label, "CANCLE/返回");
+    lv_label_set_long_mode(ui->screen_success_btn_return_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(ui->screen_success_btn_return_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_pad_all(ui->screen_success_btn_return, 0, LV_STATE_DEFAULT);
+    lv_obj_set_width(ui->screen_success_btn_return_label, LV_PCT(100));
 
-    //Write style for screen_success_btn_3, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_bg_opa(ui->screen_success_btn_3, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui->screen_success_btn_3, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_grad_dir(ui->screen_success_btn_3, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui->screen_success_btn_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_success_btn_3, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_success_btn_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_success_btn_3, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_success_btn_3, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_success_btn_3, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_success_btn_3, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_success_btn_return, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_success_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_success_btn_return, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_success_btn_return, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_success_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_success_btn_return, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_success_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_success_btn_return, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_success_btn_return, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_success_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_success_btn_return, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_success_status_bar
     ui->screen_success_status_bar = lv_obj_create(ui->screen_success);
@@ -223,74 +223,74 @@ void setup_scr_screen_success(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_success_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_success_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_success_label_21
-    ui->screen_success_label_21 = lv_label_create(ui->screen_success_cont_3);
-    lv_obj_set_pos(ui->screen_success_label_21, 54, 67);
-    lv_obj_set_size(ui->screen_success_label_21, 100, 32);
-    lv_label_set_text(ui->screen_success_label_21, "Time:14:31");
-    lv_label_set_long_mode(ui->screen_success_label_21, LV_LABEL_LONG_WRAP);
+    //Write codes screen_success_label_check_time
+    ui->screen_success_label_check_time = lv_label_create(ui->screen_success_cont_3);
+    lv_obj_set_pos(ui->screen_success_label_check_time, 54, 67);
+    lv_obj_set_size(ui->screen_success_label_check_time, 100, 32);
+    lv_label_set_text(ui->screen_success_label_check_time, "Time:14:31");
+    lv_label_set_long_mode(ui->screen_success_label_check_time, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_success_label_21, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_success_label_21, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_success_label_21, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_success_label_21, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_success_label_21, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_success_label_21, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_success_label_check_time, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_success_label_check_time, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_success_label_check_time, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_success_label_check_time, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_success_label_check_time, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_success_label_check_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_success_label_15
-    ui->screen_success_label_15 = lv_label_create(ui->screen_success_cont_3);
-    lv_obj_set_pos(ui->screen_success_label_15, 0, 32);
-    lv_obj_set_size(ui->screen_success_label_15, 196, 32);
-    lv_label_set_text(ui->screen_success_label_15, "Card:AABBCCDD");
-    lv_label_set_long_mode(ui->screen_success_label_15, LV_LABEL_LONG_WRAP);
+    //Write codes screen_success_label_Card
+    ui->screen_success_label_Card = lv_label_create(ui->screen_success_cont_3);
+    lv_obj_set_pos(ui->screen_success_label_Card, 0, 32);
+    lv_obj_set_size(ui->screen_success_label_Card, 196, 32);
+    lv_label_set_text(ui->screen_success_label_Card, "Card:AABBCCDD");
+    lv_label_set_long_mode(ui->screen_success_label_Card, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_success_label_15, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_success_label_15, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_success_label_15, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_success_label_15, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_success_label_15, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_success_label_15, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_success_label_Card, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_success_label_Card, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_success_label_Card, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_success_label_Card, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_success_label_Card, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_success_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_success_label_16
-    ui->screen_success_label_16 = lv_label_create(ui->screen_success_cont_3);
-    lv_obj_set_pos(ui->screen_success_label_16, 0, 0);
-    lv_obj_set_size(ui->screen_success_label_16, 196, 32);
-    lv_label_set_text(ui->screen_success_label_16, "学号:202210120324");
-    lv_label_set_long_mode(ui->screen_success_label_16, LV_LABEL_LONG_WRAP);
+    //Write codes screen_success_label_studentID
+    ui->screen_success_label_studentID = lv_label_create(ui->screen_success_cont_3);
+    lv_obj_set_pos(ui->screen_success_label_studentID, 0, 0);
+    lv_obj_set_size(ui->screen_success_label_studentID, 196, 32);
+    lv_label_set_text(ui->screen_success_label_studentID, "学号:202210120324");
+    lv_label_set_long_mode(ui->screen_success_label_studentID, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_success_label_16, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_success_label_16, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_success_label_16, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_success_label_16, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_success_label_16, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_success_label_16, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_success_label_studentID, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_success_label_studentID, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_success_label_studentID, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_success_label_studentID, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_success_label_studentID, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_success_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_success_label_20
     ui->screen_success_label_20 = lv_label_create(ui->screen_success);

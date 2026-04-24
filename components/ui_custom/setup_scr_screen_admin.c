@@ -51,9 +51,9 @@ void setup_scr_screen_admin(lv_ui *ui)
 
     //Write codes screen_admin_label_10
     ui->screen_admin_label_10 = lv_label_create(ui->screen_admin_cont_3);
-    lv_obj_set_pos(ui->screen_admin_label_10, 0, 0);
+    lv_obj_set_pos(ui->screen_admin_label_10, 1, 0);
     lv_obj_set_size(ui->screen_admin_label_10, 160, 35);
-    lv_label_set_text(ui->screen_admin_label_10, "ID:202210120324");
+    lv_label_set_text(ui->screen_admin_label_10, "请再刷学员卡");
     lv_label_set_long_mode(ui->screen_admin_label_10, LV_LABEL_LONG_WRAP);
 
     //Write style for screen_admin_label_10, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.

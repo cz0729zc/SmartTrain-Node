@@ -49,51 +49,51 @@ void setup_scr_screen_Confirm(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_Confirm_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Confirm_cont_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_Confirm_label_3
-    ui->screen_Confirm_label_3 = lv_label_create(ui->screen_Confirm_cont_3);
-    lv_obj_set_pos(ui->screen_Confirm_label_3, 0, 0);
-    lv_obj_set_size(ui->screen_Confirm_label_3, 160, 35);
-    lv_label_set_text(ui->screen_Confirm_label_3, "ID:202210120324");
-    lv_label_set_long_mode(ui->screen_Confirm_label_3, LV_LABEL_LONG_WRAP);
+    //Write codes screen_Confirm_label_studentID
+    ui->screen_Confirm_label_studentID = lv_label_create(ui->screen_Confirm_cont_3);
+    lv_obj_set_pos(ui->screen_Confirm_label_studentID, 0, 0);
+    lv_obj_set_size(ui->screen_Confirm_label_studentID, 160, 35);
+    lv_label_set_text(ui->screen_Confirm_label_studentID, "学号:202210120324");
+    lv_label_set_long_mode(ui->screen_Confirm_label_studentID, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_Confirm_label_3, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_Confirm_label_3, lv_color_hex(0x1F1F1F), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_Confirm_label_3, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_Confirm_label_3, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_Confirm_label_3, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_Confirm_label_3, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_Confirm_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_Confirm_label_studentID, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Confirm_label_studentID, lv_color_hex(0x1F1F1F), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Confirm_label_studentID, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Confirm_label_studentID, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Confirm_label_studentID, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_Confirm_label_studentID, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Confirm_label_studentID, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_Confirm_label_4
-    ui->screen_Confirm_label_4 = lv_label_create(ui->screen_Confirm_cont_3);
-    lv_obj_set_pos(ui->screen_Confirm_label_4, 0, 32);
-    lv_obj_set_size(ui->screen_Confirm_label_4, 160, 34);
-    lv_label_set_text(ui->screen_Confirm_label_4, "Card:AABBCCDD");
-    lv_label_set_long_mode(ui->screen_Confirm_label_4, LV_LABEL_LONG_WRAP);
+    //Write codes screen_Confirm_label_Card
+    ui->screen_Confirm_label_Card = lv_label_create(ui->screen_Confirm_cont_3);
+    lv_obj_set_pos(ui->screen_Confirm_label_Card, 0, 32);
+    lv_obj_set_size(ui->screen_Confirm_label_Card, 160, 34);
+    lv_label_set_text(ui->screen_Confirm_label_Card, "Card:AABBCCDD");
+    lv_label_set_long_mode(ui->screen_Confirm_label_Card, LV_LABEL_LONG_WRAP);
 
-    //Write style for screen_Confirm_label_4, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_border_width(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_Confirm_label_4, lv_color_hex(0x1F1F1F), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_Confirm_label_4, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_Confirm_label_4, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_Confirm_label_4, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_Confirm_label_4, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_Confirm_label_4, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_Confirm_label_Card, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Confirm_label_Card, lv_color_hex(0x1F1F1F), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Confirm_label_Card, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Confirm_label_Card, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Confirm_label_Card, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_Confirm_label_Card, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Confirm_label_Card, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_Confirm_label_5
     ui->screen_Confirm_label_5 = lv_label_create(ui->screen_Confirm);
@@ -137,57 +137,57 @@ void setup_scr_screen_Confirm(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_Confirm_cont_btns, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Confirm_cont_btns, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_Confirm_btn_1
-    ui->screen_Confirm_btn_1 = lv_button_create(ui->screen_Confirm_cont_btns);
-    lv_obj_set_pos(ui->screen_Confirm_btn_1, 220, 0);
-    lv_obj_set_size(ui->screen_Confirm_btn_1, 200, 125);
-    ui->screen_Confirm_btn_1_label = lv_label_create(ui->screen_Confirm_btn_1);
-    lv_label_set_text(ui->screen_Confirm_btn_1_label, "");
-    lv_label_set_long_mode(ui->screen_Confirm_btn_1_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(ui->screen_Confirm_btn_1_label, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_1, 0, LV_STATE_DEFAULT);
-    lv_obj_set_width(ui->screen_Confirm_btn_1_label, LV_PCT(100));
+    //Write codes screen_Confirm_btn_finger_check
+    ui->screen_Confirm_btn_finger_check = lv_button_create(ui->screen_Confirm_cont_btns);
+    lv_obj_set_pos(ui->screen_Confirm_btn_finger_check, 220, 0);
+    lv_obj_set_size(ui->screen_Confirm_btn_finger_check, 200, 125);
+    ui->screen_Confirm_btn_finger_check_label = lv_label_create(ui->screen_Confirm_btn_finger_check);
+    lv_label_set_text(ui->screen_Confirm_btn_finger_check_label, "");
+    lv_label_set_long_mode(ui->screen_Confirm_btn_finger_check_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(ui->screen_Confirm_btn_finger_check_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_finger_check, 0, LV_STATE_DEFAULT);
+    lv_obj_set_width(ui->screen_Confirm_btn_finger_check_label, LV_PCT(100));
 
-    //Write style for screen_Confirm_btn_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_1, lv_color_hex(0x2195f6), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_1, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui->screen_Confirm_btn_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_Confirm_btn_1, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_src(ui->screen_Confirm_btn_1, &_finger_RGB565A8_200x125, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_opa(ui->screen_Confirm_btn_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_recolor_opa(ui->screen_Confirm_btn_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_Confirm_btn_1, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_Confirm_btn_1, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_Confirm_btn_1, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_Confirm_btn_finger_check, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_finger_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_finger_check, lv_color_hex(0x2195f6), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_finger_check, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_Confirm_btn_finger_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Confirm_btn_finger_check, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_finger_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_src(ui->screen_Confirm_btn_finger_check, &_finger_RGB565A8_200x125, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_opa(ui->screen_Confirm_btn_finger_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_recolor_opa(ui->screen_Confirm_btn_finger_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Confirm_btn_finger_check, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Confirm_btn_finger_check, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_finger_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Confirm_btn_finger_check, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_Confirm_btn_face
-    ui->screen_Confirm_btn_face = lv_button_create(ui->screen_Confirm_cont_btns);
-    lv_obj_set_pos(ui->screen_Confirm_btn_face, 0, 0);
-    lv_obj_set_size(ui->screen_Confirm_btn_face, 200, 125);
-    ui->screen_Confirm_btn_face_label = lv_label_create(ui->screen_Confirm_btn_face);
-    lv_label_set_text(ui->screen_Confirm_btn_face_label, "");
-    lv_label_set_long_mode(ui->screen_Confirm_btn_face_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(ui->screen_Confirm_btn_face_label, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_face, 0, LV_STATE_DEFAULT);
-    lv_obj_set_width(ui->screen_Confirm_btn_face_label, LV_PCT(100));
+    //Write codes screen_Confirm_btn_face_check
+    ui->screen_Confirm_btn_face_check = lv_button_create(ui->screen_Confirm_cont_btns);
+    lv_obj_set_pos(ui->screen_Confirm_btn_face_check, 0, 0);
+    lv_obj_set_size(ui->screen_Confirm_btn_face_check, 200, 125);
+    ui->screen_Confirm_btn_face_check_label = lv_label_create(ui->screen_Confirm_btn_face_check);
+    lv_label_set_text(ui->screen_Confirm_btn_face_check_label, "");
+    lv_label_set_long_mode(ui->screen_Confirm_btn_face_check_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(ui->screen_Confirm_btn_face_check_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_face_check, 0, LV_STATE_DEFAULT);
+    lv_obj_set_width(ui->screen_Confirm_btn_face_check_label, LV_PCT(100));
 
-    //Write style for screen_Confirm_btn_face, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_face, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_face, lv_color_hex(0x1890FF), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_face, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui->screen_Confirm_btn_face, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_Confirm_btn_face, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_face, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_src(ui->screen_Confirm_btn_face, &_face_RGB565A8_200x125, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_opa(ui->screen_Confirm_btn_face, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_image_recolor_opa(ui->screen_Confirm_btn_face, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_Confirm_btn_face, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_Confirm_btn_face, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_face, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_Confirm_btn_face, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_Confirm_btn_face_check, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_face_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_face_check, lv_color_hex(0x1890FF), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_face_check, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_Confirm_btn_face_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Confirm_btn_face_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_face_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_src(ui->screen_Confirm_btn_face_check, &_face_RGB565A8_200x125, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_opa(ui->screen_Confirm_btn_face_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_image_recolor_opa(ui->screen_Confirm_btn_face_check, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Confirm_btn_face_check, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Confirm_btn_face_check, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_face_check, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Confirm_btn_face_check, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_Confirm_control_bar
     ui->screen_Confirm_control_bar = lv_obj_create(ui->screen_Confirm);
@@ -210,28 +210,28 @@ void setup_scr_screen_Confirm(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_Confirm_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Confirm_control_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
-    //Write codes screen_Confirm_btn_2
-    ui->screen_Confirm_btn_2 = lv_button_create(ui->screen_Confirm_control_bar);
-    lv_obj_set_pos(ui->screen_Confirm_btn_2, 30, 0);
-    lv_obj_set_size(ui->screen_Confirm_btn_2, 100, 30);
-    ui->screen_Confirm_btn_2_label = lv_label_create(ui->screen_Confirm_btn_2);
-    lv_label_set_text(ui->screen_Confirm_btn_2_label, "CANCLE/返回");
-    lv_label_set_long_mode(ui->screen_Confirm_btn_2_label, LV_LABEL_LONG_WRAP);
-    lv_obj_align(ui->screen_Confirm_btn_2_label, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_2, 0, LV_STATE_DEFAULT);
-    lv_obj_set_width(ui->screen_Confirm_btn_2_label, LV_PCT(100));
+    //Write codes screen_Confirm_btn_return
+    ui->screen_Confirm_btn_return = lv_button_create(ui->screen_Confirm_control_bar);
+    lv_obj_set_pos(ui->screen_Confirm_btn_return, 30, 0);
+    lv_obj_set_size(ui->screen_Confirm_btn_return, 100, 30);
+    ui->screen_Confirm_btn_return_label = lv_label_create(ui->screen_Confirm_btn_return);
+    lv_label_set_text(ui->screen_Confirm_btn_return_label, "CANCLE/返回");
+    lv_label_set_long_mode(ui->screen_Confirm_btn_return_label, LV_LABEL_LONG_WRAP);
+    lv_obj_align(ui->screen_Confirm_btn_return_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_pad_all(ui->screen_Confirm_btn_return, 0, LV_STATE_DEFAULT);
+    lv_obj_set_width(ui->screen_Confirm_btn_return_label, LV_PCT(100));
 
-    //Write style for screen_Confirm_btn_2, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
-    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_2, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_2, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui->screen_Confirm_btn_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui->screen_Confirm_btn_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui->screen_Confirm_btn_2, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_Confirm_btn_2, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_Confirm_btn_2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    //Write style for screen_Confirm_btn_return, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_Confirm_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_Confirm_btn_return, lv_color_hex(0xc56e00), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_Confirm_btn_return, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_Confirm_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Confirm_btn_return, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Confirm_btn_return, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Confirm_btn_return, lv_color_hex(0xffffff), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Confirm_btn_return, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Confirm_btn_return, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Confirm_btn_return, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_Confirm_status_bar
     ui->screen_Confirm_status_bar = lv_obj_create(ui->screen_Confirm);
