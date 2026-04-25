@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lvgl.h"
+#include "esp_log.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -30,6 +31,7 @@ static lv_timer_t *s_standby_delay_timer = NULL;
 static uint32_t s_pending_selfcheck_updates = 0;
 static bool s_finish_requested = false;
 static portMUX_TYPE s_selfcheck_state_lock = portMUX_INITIALIZER_UNLOCKED;
+static const char *TAG = "events_init";
 
 #define SELFCHECK_STANDBY_DELAY_MS 5000
 
@@ -193,6 +195,23 @@ static void selfcheck_return_btn_cb(lv_event_t *e)
 	load_standby_screen();
 }
 
+static void selfcheck_return_btn_press_dbg_cb(lv_event_t *e)
+{
+	if (e == NULL) {
+		return;
+	}
+
+	lv_indev_t *indev = lv_indev_get_act();
+	if (indev == NULL) {
+		ESP_LOGI(TAG, "Return 按下: indev=NULL");
+		return;
+	}
+
+	lv_point_t point = {0};
+	lv_indev_get_point(indev, &point);
+	ESP_LOGI(TAG, "Return 按下坐标: x=%d, y=%d", (int)point.x, (int)point.y);
+}
+
 void events_init(lv_ui *ui)
 {
 	s_ui = ui;
@@ -212,6 +231,7 @@ void events_init(lv_ui *ui)
 	if (s_ui->screen_btn_selfcheck_return != NULL) {
 		lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
 		lv_obj_add_event_cb(s_ui->screen_btn_selfcheck_return, selfcheck_return_btn_cb, LV_EVENT_CLICKED, NULL);
+		lv_obj_add_event_cb(s_ui->screen_btn_selfcheck_return, selfcheck_return_btn_press_dbg_cb, LV_EVENT_PRESSED, NULL);
 	}
 }
 

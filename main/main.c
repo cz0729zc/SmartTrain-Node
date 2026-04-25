@@ -26,6 +26,8 @@
 #include "custom.h"
 #include "events_init.h"
 
+#include "app_display.h"
+
 lv_ui guider_ui;
 
 static const char *TAG = "main";
@@ -42,6 +44,7 @@ static bool s_rfid_ready = false;
 
 static bool s_face_ready = false;
 static bool s_finger_ready = false;
+static bool s_sensor_ready = false;
 static bool s_has_active_profile = false;
 static bool s_admin_mode = false;
 static attendance_profile_t s_active_profile = {0};
@@ -125,6 +128,11 @@ static void extract_uid_suffix(const char *uid_str, char *out, size_t out_size)
 
 void app_main(void)
 {
+
+    //touch测试
+    // ESP_ERROR_CHECK(app_display_init());
+    // app_display_test(); 
+
     // 1. 系统级初始化 (NVS, Log, BSP...)
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -170,6 +178,16 @@ void app_main(void)
         ESP_LOGW(TAG, "指纹模块自检失败");
     }
 
+    ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
+    float humidity = 0.0f;
+    float temperature = 0.0f;
+    s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
+    if (s_sensor_ready) {
+        ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
+    } else {
+        ESP_LOGW(TAG, "DHT11 自检失败");
+    }
+
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");
 
@@ -186,6 +204,9 @@ void app_main(void)
     events_selfcheck_set_result(EVENTS_SC_FINGER,
                                 s_finger_ready,
                                 s_finger_ready ? "Finger module ready" : "Finger module failed");
+    events_selfcheck_set_result(EVENTS_SC_NETWORK,
+                                s_sensor_ready,
+                                s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
     events_selfcheck_finish();
     lvgl_port_unlock();
 

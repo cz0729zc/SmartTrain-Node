@@ -15,6 +15,11 @@ static const char *TAG = "app_sensor";
 
 static TaskHandle_t s_sensor_task_handle = NULL;
 
+esp_err_t app_sensor_probe(float *humidity, float *temperature)
+{
+    return driver_dht_read_float_data(DHT_SENSOR_TYPE, SENSOR_GPIO, humidity, temperature);
+}
+
 static void sensor_task(void *pvParameters)
 {
     sensor_data_t data = {0};
