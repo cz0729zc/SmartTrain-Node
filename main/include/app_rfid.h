@@ -42,6 +42,17 @@ esp_err_t app_rfid_start(void);
 esp_err_t app_rfid_stop(void);
 
 /**
+ * @brief 快速探测 RFID 硬件是否在线
+ *
+ * 仅执行 I2C 地址应答检测，不会启动 RC522 扫描任务。
+ * 用于开机自检，避免完整启动流程阻塞主任务。
+ *
+ * @param timeout_ms 单次 I2C 事务超时时间（毫秒）
+ * @return esp_err_t ESP_OK 表示设备在线，其他表示探测失败
+ */
+esp_err_t app_rfid_probe(uint32_t timeout_ms);
+
+/**
  * @brief 设置卡片检测回调
  *
  * 当检测到卡片时，调用此回调通知上层应用。

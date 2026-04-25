@@ -3,6 +3,7 @@
 #include "driver/rc522_i2c.h"
 #include "rc522_picc.h"
 #include "picc/rc522_mifare.h"
+#include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
@@ -12,8 +13,9 @@ static const char *TAG = "app_rfid";
 
 /* ==================== 硬件配置 ==================== */
 #define RC522_I2C_ADDRESS       (0x28)       // I2C 地址 (部分模块是 0x2A)
-#define RC522_I2C_SDA_GPIO      (GPIO_NUM_20) // SDA 引脚
-#define RC522_I2C_SCL_GPIO      (GPIO_NUM_21) // SCL 引脚
+#define RC522_I2C_ADDRESS_ALT   (0x2A)
+#define RC522_I2C_SDA_GPIO      (GPIO_NUM_21) // SDA 引脚
+#define RC522_I2C_SCL_GPIO      (GPIO_NUM_47) // SCL 引脚
 #define RC522_RST_GPIO          (-1)          // RST 引脚 (-1 为软复位)
 #define RC522_POLL_INTERVAL_MS  (125)         // 轮询间隔 (ms)
 /* ================================================= */
@@ -35,6 +37,84 @@ static const rc522_mifare_key_t s_default_key = {
     .type = RC522_MIFARE_KEY_A,
     .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
 };
+
+static esp_err_t probe_addr_once(i2c_port_t port, uint8_t addr, uint32_t timeout_ms)
+{
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    if (cmd == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_stop(cmd);
+
+    esp_err_t ret = i2c_master_cmd_begin(port, cmd, pdMS_TO_TICKS(timeout_ms));
+    i2c_cmd_link_delete(cmd);
+    return ret;
+}
+
+esp_err_t app_rfid_probe(uint32_t timeout_ms)
+{
+    if (timeout_ms == 0) {
+        timeout_ms = 200;
+    }
+
+    const i2c_port_t port = I2C_NUM_0;
+    bool installed_by_me = false;
+
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = RC522_I2C_SDA_GPIO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_io_num = RC522_I2C_SCL_GPIO,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 100000,
+        .clk_flags = 0,
+    };
+
+    esp_err_t ret = i2c_param_config(port, &conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "RFID probe i2c_param_config failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = i2c_driver_install(port, conf.mode, 0, 0, 0);
+    if (ret == ESP_OK) {
+        installed_by_me = true;
+    } else if (ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "RFID probe i2c_driver_install failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = ESP_ERR_TIMEOUT;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        ret = probe_addr_once(port, RC522_I2C_ADDRESS, timeout_ms);
+        if (ret == ESP_OK) {
+            ESP_LOGI(TAG, "RFID probe success (addr=0x%02X, attempt=%d)", RC522_I2C_ADDRESS, attempt + 1);
+            break;
+        }
+
+        esp_err_t alt_ret = probe_addr_once(port, RC522_I2C_ADDRESS_ALT, timeout_ms);
+        if (alt_ret == ESP_OK) {
+            ret = alt_ret;
+            ESP_LOGI(TAG, "RFID probe success (addr=0x%02X, attempt=%d)", RC522_I2C_ADDRESS_ALT, attempt + 1);
+            break;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+
+    if (installed_by_me) {
+        (void)i2c_driver_delete(port);
+    }
+
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "RFID probe failed (addr=0x%02X/0x%02X): %s", RC522_I2C_ADDRESS, RC522_I2C_ADDRESS_ALT, esp_err_to_name(ret));
+    }
+
+    return ret;
+}
 
 /**
  * @brief PICC 状态变化事件回调
@@ -95,7 +175,7 @@ esp_err_t app_rfid_start(void)
     rc522_i2c_config_t driver_config = {
         .port = I2C_NUM_0,
         .device_address = RC522_I2C_ADDRESS,
-        .rw_timeout_ms = 1000,
+        .rw_timeout_ms = 100,
         .config = {
             .mode = I2C_MODE_MASTER,
             .sda_io_num = RC522_I2C_SDA_GPIO,
@@ -116,6 +196,8 @@ esp_err_t app_rfid_start(void)
         return ret;
     }
 
+    ESP_LOGI(TAG, "RC522 I2C 驱动创建完成");
+
     // 安装驱动
     ret = rc522_driver_install(s_driver);
     if (ret != ESP_OK) {
@@ -124,6 +206,8 @@ esp_err_t app_rfid_start(void)
         s_picc_mutex = NULL;
         return ret;
     }
+
+    ESP_LOGI(TAG, "安装 RC522 驱动...");
 
     // 扫描器配置
     rc522_config_t scanner_config = {
@@ -134,6 +218,8 @@ esp_err_t app_rfid_start(void)
     };
 
     // 创建扫描器
+    ESP_LOGI(TAG, "创建 RC522 扫描器...");
+
     ret = rc522_create(&scanner_config, &s_scanner);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "创建扫描器失败: %s", esp_err_to_name(ret));

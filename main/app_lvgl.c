@@ -61,9 +61,9 @@ esp_err_t app_lvgl_init(void)
     const lvgl_port_cfg_t lvgl_cfg = {
         .task_priority = 4,
         .task_stack = 6144,
-        .task_affinity = -1,
+        .task_affinity = 1,
         .task_max_sleep_ms = 500,
-        .timer_period_ms = 5,
+        .timer_period_ms = 10,
     };
     ret = lvgl_port_init(&lvgl_cfg);
     if (ret != ESP_OK) {

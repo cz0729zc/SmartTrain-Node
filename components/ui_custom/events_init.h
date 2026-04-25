@@ -18,6 +18,16 @@ extern "C" {
 
 void events_init(lv_ui *ui);
 
+typedef enum {
+	EVENTS_SC_RFID = 0,
+	EVENTS_SC_FACE,
+	EVENTS_SC_FINGER,
+	EVENTS_SC_NETWORK,
+} events_selfcheck_item_t;
+
+void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text);
+void events_selfcheck_finish(void);
+
 
 #ifdef __cplusplus
 }

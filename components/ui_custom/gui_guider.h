@@ -37,6 +37,8 @@ typedef struct
 	lv_obj_t *screen_label_Network;
 	lv_obj_t *screen_label_11;
 	lv_obj_t *screen_label_fail_reason;
+	lv_obj_t *screen_btn_selfcheck_return;
+	lv_obj_t *screen_btn_selfcheck_return_label;
 	lv_obj_t *screen_Standby;
 	bool screen_Standby_del;
 	lv_obj_t *screen_Standby_status_bar;
