@@ -50,10 +50,70 @@ static bool s_admin_mode = false;
 static attendance_profile_t s_active_profile = {0};
 static SemaphoreHandle_t s_bio_mutex = NULL;
 static char s_admin_target_sid[ATTENDANCE_STUDENT_ID_MAX_LEN] = {0};
+static lv_obj_t *s_touch_info_label = NULL;
 
 static bool is_admin_card(const char *uid_str)
 {
     return uid_str != NULL && strcmp(uid_str, ADMIN_CARD_UID) == 0;
+}
+
+static void lvgl_touch_test_event_cb(lv_event_t *e)
+{
+    if (e == NULL) {
+        return;
+    }
+
+    lv_indev_t *indev = lv_event_get_indev(e);
+    if (indev == NULL) {
+        indev = lv_indev_get_act();
+    }
+
+    if (indev == NULL) {
+        ESP_LOGI(TAG, "LVGL touch: indev=NULL");
+        return;
+    }
+
+    lv_point_t point = {0};
+    lv_indev_get_point(indev, &point);
+    ESP_LOGI(TAG, "LVGL touch: x=%d, y=%d", (int)point.x, (int)point.y);
+
+    if (s_touch_info_label != NULL) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "LVGL touch: x=%d, y=%d", (int)point.x, (int)point.y);
+        lv_label_set_text(s_touch_info_label, buf);
+    }
+}
+
+static void create_lvgl_touch_test_screen(void)
+{
+    lv_obj_t *scr = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x102030), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(scr);
+    lv_label_set_text(title, "LVGL Touch Coordinate Test");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 18);
+
+    s_touch_info_label = lv_label_create(scr);
+    lv_label_set_text(s_touch_info_label, "Touch here");
+    lv_obj_set_style_text_color(s_touch_info_label, lv_color_hex(0x7FDBFF), LV_PART_MAIN);
+    lv_obj_set_style_text_font(s_touch_info_label, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_align(s_touch_info_label, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t *pad = lv_btn_create(scr);
+    lv_obj_set_size(pad, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_shadow_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_clear_flag(pad, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_RELEASED, NULL);
+
+    lv_screen_load(scr);
 }
 
 static void ui_async_show_admin(void *arg)
@@ -117,7 +177,6 @@ static void extract_uid_suffix(const char *uid_str, char *out, size_t out_size)
     out[count] = '\0';
 }
 
-
 /*
  * main.c 只负责业务入口编排：
  * - 系统初始化
@@ -128,11 +187,6 @@ static void extract_uid_suffix(const char *uid_str, char *out, size_t out_size)
 
 void app_main(void)
 {
-
-    //touch测试
-    // ESP_ERROR_CHECK(app_display_init());
-    // app_display_test(); 
-
     // 1. 系统级初始化 (NVS, Log, BSP...)
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -191,10 +245,14 @@ void app_main(void)
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");
 
-    /* app_main 任务中调用 LVGL API 需要先加锁，避免与 taskLVGL 并发访问 */
+    // /* app_main 任务中调用 LVGL API 需要先加锁，避免与 taskLVGL 并发访问 */
     lvgl_port_lock(0);
     setup_ui(&guider_ui);
     events_init(&guider_ui);
+
+    //touch测试
+    // create_lvgl_touch_test_screen();
+
     events_selfcheck_set_result(EVENTS_SC_RFID,
                                 s_rfid_ready,
                                 s_rfid_ready ? "RFID module ready" : "RFID module failed");

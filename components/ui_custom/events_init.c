@@ -136,6 +136,7 @@ static void selfcheck_apply_update_cb(void *arg)
 		s_selfcheck_failed = true;
 		if (s_ui->screen_btn_selfcheck_return != NULL) {
 			lv_obj_clear_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
+			lv_obj_move_foreground(s_ui->screen_btn_selfcheck_return);
 		}
 	}
 
@@ -181,6 +182,7 @@ static void selfcheck_finish_cb(void *arg)
 		update_selfcheck_log("Self-check failed, press Return to Standby");
 		if (s_ui->screen_btn_selfcheck_return != NULL) {
 			lv_obj_clear_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
+			lv_obj_move_foreground(s_ui->screen_btn_selfcheck_return);
 		}
 	}
 }
@@ -195,21 +197,51 @@ static void selfcheck_return_btn_cb(lv_event_t *e)
 	load_standby_screen();
 }
 
+static void log_touch_point_from_event(const char *tag_prefix, lv_event_t *e)
+{
+	lv_indev_t *indev = NULL;
+	if (e != NULL) {
+		indev = lv_event_get_indev(e);
+	}
+	if (indev == NULL) {
+		indev = lv_indev_get_act();
+	}
+
+	if (indev == NULL) {
+		ESP_LOGI(TAG, "%s: indev=NULL", tag_prefix);
+		return;
+	}
+
+	lv_point_t point = {0};
+	lv_indev_get_point(indev, &point);
+	ESP_LOGI(TAG, "%s: x=%d, y=%d", tag_prefix, (int)point.x, (int)point.y);
+}
+
 static void selfcheck_return_btn_press_dbg_cb(lv_event_t *e)
 {
 	if (e == NULL) {
 		return;
 	}
 
-	lv_indev_t *indev = lv_indev_get_act();
-	if (indev == NULL) {
-		ESP_LOGI(TAG, "Return 按下: indev=NULL");
-		return;
-	}
+	log_touch_point_from_event("Return 按下坐标", e);
 
-	lv_point_t point = {0};
-	lv_indev_get_point(indev, &point);
-	ESP_LOGI(TAG, "Return 按下坐标: x=%d, y=%d", (int)point.x, (int)point.y);
+	lv_obj_t *target = lv_event_get_target(e);
+	if (target != NULL) {
+		lv_area_t area;
+		lv_obj_get_coords(target, &area);
+		ESP_LOGI(TAG, "Return 按钮区域: x1=%d y1=%d x2=%d y2=%d",
+			(int)area.x1, (int)area.y1, (int)area.x2, (int)area.y2);
+	}
+}
+
+static void selfcheck_return_btn_click_dbg_cb(lv_event_t *e)
+{
+	log_touch_point_from_event("Return 点击坐标", e);
+}
+
+static void selfcheck_screen_press_dbg_cb(lv_event_t *e)
+{
+	log_touch_point_from_event("Selfcheck 屏幕按下", e);
 }
 
 void events_init(lv_ui *ui)
@@ -230,8 +262,19 @@ void events_init(lv_ui *ui)
 
 	if (s_ui->screen_btn_selfcheck_return != NULL) {
 		lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
+		lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_event_cb(s_ui->screen_btn_selfcheck_return, selfcheck_return_btn_cb, LV_EVENT_CLICKED, NULL);
 		lv_obj_add_event_cb(s_ui->screen_btn_selfcheck_return, selfcheck_return_btn_press_dbg_cb, LV_EVENT_PRESSED, NULL);
+		lv_obj_add_event_cb(s_ui->screen_btn_selfcheck_return, selfcheck_return_btn_click_dbg_cb, LV_EVENT_CLICKED, NULL);
+
+		lv_area_t area;
+		lv_obj_get_coords(s_ui->screen_btn_selfcheck_return, &area);
+		ESP_LOGI(TAG, "Return 初始区域: x1=%d y1=%d x2=%d y2=%d",
+			(int)area.x1, (int)area.y1, (int)area.x2, (int)area.y2);
+	}
+
+	if (s_ui->screen != NULL) {
+		lv_obj_add_event_cb(s_ui->screen, selfcheck_screen_press_dbg_cb, LV_EVENT_PRESSED, NULL);
 	}
 }
 

@@ -317,7 +317,7 @@ void setup_scr_screen(lv_ui *ui)
     ui->screen_label_Network = lv_label_create(ui->screen_cont_4);
     lv_obj_set_pos(ui->screen_label_Network, 93, 8);
     lv_obj_set_size(ui->screen_label_Network, 100, 32);
-    lv_label_set_text(ui->screen_label_Network, "Sensor");
+    lv_label_set_text(ui->screen_label_Network, "Network");
     lv_label_set_long_mode(ui->screen_label_Network, LV_LABEL_LONG_WRAP);
 
     //Write style for screen_label_Network, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
@@ -385,8 +385,8 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write codes screen_btn_selfcheck_return
     ui->screen_btn_selfcheck_return = lv_button_create(ui->screen);
-    lv_obj_set_pos(ui->screen_btn_selfcheck_return, 330, 268);
-    lv_obj_set_size(ui->screen_btn_selfcheck_return, 130, 42);
+    lv_obj_set_pos(ui->screen_btn_selfcheck_return, 18, 258);
+    lv_obj_set_size(ui->screen_btn_selfcheck_return, 150, 46);
     lv_obj_add_flag(ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
     ui->screen_btn_selfcheck_return_label = lv_label_create(ui->screen_btn_selfcheck_return);
     lv_label_set_text(ui->screen_btn_selfcheck_return_label, "return");
