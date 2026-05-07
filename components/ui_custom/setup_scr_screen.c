@@ -9,15 +9,30 @@
 
 #include "lvgl.h"
 #include <stdio.h>
+#include "esp_log.h"
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "gui_guider.h"
 #include "events_init.h"
 #include "widgets_init.h"
 #include "custom.h"
 
+static const char *TAG = "setup_scr";
 
+static void log_screen_stage(const char *stage)
+{
+    ESP_LOGI(TAG, "%s core=%d stack_hwm=%u internal=%u dma=%u",
+             stage,
+             (int)xPortGetCoreID(),
+             (unsigned)uxTaskGetStackHighWaterMark(NULL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
 
 void setup_scr_screen(lv_ui *ui)
 {
+    log_screen_stage("screen begin");
     //Write codes screen
     ui->screen = lv_obj_create(NULL);
     lv_obj_set_size(ui->screen, 480, 320);
@@ -29,6 +44,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_bg_grad_dir(ui->screen, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_lbl_logo
+    log_screen_stage("logo begin");
     ui->screen_lbl_logo = lv_label_create(ui->screen);
     lv_obj_set_pos(ui->screen_lbl_logo, 148, 20);
     lv_obj_set_size(ui->screen_lbl_logo, 172, 32);
@@ -52,6 +68,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_lbl_logo, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_spinner_1
+    log_screen_stage("spinner begin");
     ui->screen_spinner_1 = lv_spinner_create(ui->screen);
     lv_obj_set_pos(ui->screen_spinner_1, 200, 240);
     lv_obj_set_size(ui->screen_spinner_1, 50, 50);
@@ -78,6 +95,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_arc_rounded(ui->screen_spinner_1, true, LV_PART_INDICATOR|LV_STATE_DEFAULT);
 
     //Write codes screen_cont_modules
+    log_screen_stage("modules container begin");
     ui->screen_cont_modules = lv_obj_create(ui->screen);
     lv_obj_set_pos(ui->screen_cont_modules, 90, 80);
     lv_obj_set_size(ui->screen_cont_modules, 300, 160);
@@ -97,6 +115,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_cont_modules, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_cont_1
+    log_screen_stage("row1 begin");
     ui->screen_cont_1 = lv_obj_create(ui->screen_cont_modules);
     lv_obj_set_pos(ui->screen_cont_1, 0, 0);
     lv_obj_set_size(ui->screen_cont_1, 300, 40);
@@ -163,6 +182,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_label_6, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_cont_2
+    log_screen_stage("row2 begin");
     ui->screen_cont_2 = lv_obj_create(ui->screen_cont_modules);
     lv_obj_set_pos(ui->screen_cont_2, 0, 40);
     lv_obj_set_size(ui->screen_cont_2, 300, 40);
@@ -229,6 +249,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_label_7, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_cont_3
+    log_screen_stage("row3 begin");
     ui->screen_cont_3 = lv_obj_create(ui->screen_cont_modules);
     lv_obj_set_pos(ui->screen_cont_3, 0, 80);
     lv_obj_set_size(ui->screen_cont_3, 300, 40);
@@ -295,6 +316,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_label_9, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_cont_4
+    log_screen_stage("row4 begin");
     ui->screen_cont_4 = lv_obj_create(ui->screen_cont_modules);
     lv_obj_set_pos(ui->screen_cont_4, 0, 120);
     lv_obj_set_size(ui->screen_cont_4, 300, 40);
@@ -361,6 +383,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_label_11, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_label_fail_reason
+    log_screen_stage("fail label begin");
     ui->screen_label_fail_reason = lv_label_create(ui->screen);
     lv_obj_set_pos(ui->screen_label_fail_reason, 173, 300);
     lv_obj_set_size(ui->screen_label_fail_reason, 134, 14);
@@ -384,6 +407,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_shadow_width(ui->screen_label_fail_reason, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //Write codes screen_btn_selfcheck_return
+    log_screen_stage("return button begin");
     ui->screen_btn_selfcheck_return = lv_button_create(ui->screen);
     lv_obj_set_pos(ui->screen_btn_selfcheck_return, 18, 258);
     lv_obj_set_size(ui->screen_btn_selfcheck_return, 150, 46);
@@ -411,6 +435,8 @@ void setup_scr_screen(lv_ui *ui)
 
 
     //Update current screen layout.
+    log_screen_stage("update layout begin");
     lv_obj_update_layout(ui->screen);
+    log_screen_stage("screen end");
 
 }

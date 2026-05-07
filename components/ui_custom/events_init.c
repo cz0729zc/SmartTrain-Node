@@ -9,10 +9,11 @@
 
 #include "events_init.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "lvgl.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
+#include "esp_lvgl_port.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -27,21 +28,29 @@
 
 static lv_ui *s_ui = NULL;
 static bool s_selfcheck_failed = false;
+static bool s_standby_load_pending = false;
 static lv_timer_t *s_standby_delay_timer = NULL;
-static uint32_t s_pending_selfcheck_updates = 0;
-static bool s_finish_requested = false;
-static portMUX_TYPE s_selfcheck_state_lock = portMUX_INITIALIZER_UNLOCKED;
 static const char *TAG = "events_init";
 
 #define SELFCHECK_STANDBY_DELAY_MS 5000
 
-typedef struct {
-	events_selfcheck_item_t item;
-	bool ok;
-	char log_text[96];
-} selfcheck_update_msg_t;
-
 static void selfcheck_finish_cb(void *arg);
+static void request_standby_screen_load(void);
+
+static void log_ui_mem(const char *stage)
+{
+	if (stage == NULL) {
+		stage = "unknown";
+	}
+
+	ESP_LOGI(TAG,
+		"%s core=%d stack_hwm=%u internal=%u dma=%u",
+		stage,
+		(int)xPortGetCoreID(),
+		(unsigned)uxTaskGetStackHighWaterMark(NULL),
+		(unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+		(unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
 
 static void cancel_standby_delay_timer(void)
 {
@@ -54,13 +63,44 @@ static void cancel_standby_delay_timer(void)
 static void load_standby_screen(void)
 {
 	if (s_ui == NULL) {
+		s_standby_load_pending = false;
 		return;
 	}
 
+	log_ui_mem("standby load begin");
+
 	if (s_ui->screen_Standby_del) {
+		log_ui_mem("standby setup begin");
 		setup_scr_screen_Standby(s_ui);
+		s_ui->screen_Standby_del = false;
+		log_ui_mem("standby setup end");
 	}
-	lv_screen_load_anim(s_ui->screen_Standby, LV_SCR_LOAD_ANIM_FADE_ON, 180, 0, false);
+
+	log_ui_mem("standby screen_load begin");
+	lv_screen_load(s_ui->screen_Standby);
+	log_ui_mem("standby screen_load end");
+	s_standby_load_pending = false;
+}
+
+static void load_standby_screen_async_cb(void *arg)
+{
+	(void)arg;
+	load_standby_screen();
+}
+
+static void request_standby_screen_load(void)
+{
+	if (s_standby_load_pending) {
+		ESP_LOGI(TAG, "standby load already pending");
+		return;
+	}
+
+	s_standby_load_pending = true;
+	log_ui_mem("standby async request");
+	if (lv_async_call(load_standby_screen_async_cb, NULL) != LV_RESULT_OK) {
+		ESP_LOGW(TAG, "lv_async_call failed, load standby directly");
+		load_standby_screen();
+	}
 }
 
 static void standby_delay_timer_cb(lv_timer_t *timer)
@@ -68,7 +108,7 @@ static void standby_delay_timer_cb(lv_timer_t *timer)
 	(void)timer;
 	s_standby_delay_timer = NULL;
 
-	load_standby_screen();
+	request_standby_screen_load();
 }
 
 static void set_module_status(lv_obj_t *label, bool ok)
@@ -115,20 +155,13 @@ static lv_obj_t *status_label_by_item(events_selfcheck_item_t item)
 	}
 }
 
-static void selfcheck_apply_update_cb(void *arg)
+static void selfcheck_apply_result(events_selfcheck_item_t item, bool ok, const char *log_text)
 {
-	selfcheck_update_msg_t *msg = (selfcheck_update_msg_t *)arg;
-	if (msg == NULL || s_ui == NULL) {
-		portENTER_CRITICAL(&s_selfcheck_state_lock);
-		if (s_pending_selfcheck_updates > 0) {
-			s_pending_selfcheck_updates--;
-		}
-		portEXIT_CRITICAL(&s_selfcheck_state_lock);
-		free(msg);
+	if (s_ui == NULL) {
 		return;
 	}
 
-	if (msg->ok) {
+	if (ok) {
 		if (s_ui->screen_btn_selfcheck_return != NULL) {
 			lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
 		}
@@ -140,26 +173,10 @@ static void selfcheck_apply_update_cb(void *arg)
 		}
 	}
 
-	set_module_status(status_label_by_item(msg->item), msg->ok);
-	if (msg->log_text[0] != '\0') {
-		update_selfcheck_log(msg->log_text);
+	set_module_status(status_label_by_item(item), ok);
+	if (log_text != NULL && log_text[0] != '\0') {
+		update_selfcheck_log(log_text);
 	}
-
-	bool should_finish_now = false;
-	portENTER_CRITICAL(&s_selfcheck_state_lock);
-	if (s_pending_selfcheck_updates > 0) {
-		s_pending_selfcheck_updates--;
-	}
-	if (s_finish_requested && s_pending_selfcheck_updates == 0) {
-		s_finish_requested = false;
-		should_finish_now = true;
-	}
-	portEXIT_CRITICAL(&s_selfcheck_state_lock);
-	if (should_finish_now) {
-		selfcheck_finish_cb(NULL);
-	}
-
-	free(msg);
 }
 
 static void selfcheck_finish_cb(void *arg)
@@ -194,7 +211,7 @@ static void selfcheck_return_btn_cb(lv_event_t *e)
 		return;
 	}
 
-	load_standby_screen();
+	request_standby_screen_load();
 }
 
 static void log_touch_point_from_event(const char *tag_prefix, lv_event_t *e)
@@ -255,10 +272,6 @@ void events_init(lv_ui *ui)
 	cancel_standby_delay_timer();
 	update_selfcheck_log("Self-check start...");
 	s_selfcheck_failed = false;
-	portENTER_CRITICAL(&s_selfcheck_state_lock);
-	s_pending_selfcheck_updates = 0;
-	s_finish_requested = false;
-	portEXIT_CRITICAL(&s_selfcheck_state_lock);
 
 	if (s_ui->screen_btn_selfcheck_return != NULL) {
 		lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
@@ -280,41 +293,20 @@ void events_init(lv_ui *ui)
 
 void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text)
 {
-	selfcheck_update_msg_t *msg = (selfcheck_update_msg_t *)calloc(1, sizeof(selfcheck_update_msg_t));
-	if (msg == NULL) {
-		return;
+	ESP_LOGI(TAG, "selfcheck set begin item=%d ok=%d", (int)item, (int)ok);
+	if (lvgl_port_lock(0)) {
+		selfcheck_apply_result(item, ok, log_text);
+		lvgl_port_unlock();
 	}
-	portENTER_CRITICAL(&s_selfcheck_state_lock);
-	s_pending_selfcheck_updates++;
-	portEXIT_CRITICAL(&s_selfcheck_state_lock);
-
-	msg->item = item;
-	msg->ok = ok;
-	if (log_text != NULL) {
-		strncpy(msg->log_text, log_text, sizeof(msg->log_text) - 1);
-	}
-
-	if (lv_async_call(selfcheck_apply_update_cb, msg) != LV_RESULT_OK) {
-		portENTER_CRITICAL(&s_selfcheck_state_lock);
-		if (s_pending_selfcheck_updates > 0) {
-			s_pending_selfcheck_updates--;
-		}
-		portEXIT_CRITICAL(&s_selfcheck_state_lock);
-		free(msg);
-	}
+	ESP_LOGI(TAG, "selfcheck set end item=%d", (int)item);
 }
 
 void events_selfcheck_finish(void)
 {
-	bool has_pending = false;
-	portENTER_CRITICAL(&s_selfcheck_state_lock);
-	has_pending = (s_pending_selfcheck_updates > 0);
-	if (has_pending) {
-		s_finish_requested = true;
+	ESP_LOGI(TAG, "selfcheck finish begin");
+	if (lvgl_port_lock(0)) {
+		selfcheck_finish_cb(NULL);
+		lvgl_port_unlock();
 	}
-	portEXIT_CRITICAL(&s_selfcheck_state_lock);
-
-	if (!has_pending) {
-		lv_async_call(selfcheck_finish_cb, NULL);
-	}
+	ESP_LOGI(TAG, "selfcheck finish end");
 }

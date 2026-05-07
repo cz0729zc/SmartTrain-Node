@@ -13,11 +13,31 @@
 #include "events_init.h"
 #include "widgets_init.h"
 #include "custom.h"
+#include "esp_log.h"
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
+static const char *TAG = "setup_standby";
 
+static void log_standby_stage(const char *stage)
+{
+    if (stage == NULL) {
+        stage = "unknown";
+    }
+
+    ESP_LOGI(TAG,
+             "%s core=%d stack_hwm=%u internal=%u dma=%u",
+             stage,
+             (int)xPortGetCoreID(),
+             (unsigned)uxTaskGetStackHighWaterMark(NULL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
 
 void setup_scr_screen_Standby(lv_ui *ui)
 {
+    log_standby_stage("screen begin");
     //Write codes screen_Standby
     ui->screen_Standby = lv_obj_create(NULL);
     lv_obj_set_size(ui->screen_Standby, 480, 320);
@@ -28,6 +48,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_bg_color(ui->screen_Standby, lv_color_hex(0xF0F2F5), LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_bg_grad_dir(ui->screen_Standby, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("status bar begin");
     //Write codes screen_Standby_status_bar
     ui->screen_Standby_status_bar = lv_obj_create(ui->screen_Standby);
     lv_obj_set_pos(ui->screen_Standby_status_bar, 0, 0);
@@ -49,6 +70,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_pad_right(ui->screen_Standby_status_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Standby_status_bar, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("time label begin");
     //Write codes screen_Standby_label_time
     ui->screen_Standby_label_time = lv_label_create(ui->screen_Standby_status_bar);
     lv_obj_set_pos(ui->screen_Standby_label_time, 0, 0);
@@ -72,6 +94,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_pad_left(ui->screen_Standby_label_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Standby_label_time, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("status icons begin");
     //Write codes screen_Standby_cont_status_icons
     ui->screen_Standby_cont_status_icons = lv_obj_create(ui->screen_Standby_status_bar);
     lv_obj_set_pos(ui->screen_Standby_cont_status_icons, 330, 0);
@@ -137,6 +160,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_pad_left(ui->screen_Standby_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Standby_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("title begin");
     //Write codes screen_Standby_label_3
     ui->screen_Standby_label_3 = lv_label_create(ui->screen_Standby);
     lv_obj_set_pos(ui->screen_Standby_label_3, 0, 60);
@@ -160,12 +184,15 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_pad_left(ui->screen_Standby_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Standby_label_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("rfid image begin");
     //Write codes screen_Standby_img_1
     ui->screen_Standby_img_1 = lv_image_create(ui->screen_Standby);
     lv_obj_set_pos(ui->screen_Standby_img_1, 165, 110);
     lv_obj_set_size(ui->screen_Standby_img_1, 150, 150);
     lv_obj_add_flag(ui->screen_Standby_img_1, LV_OBJ_FLAG_CLICKABLE);
+    log_standby_stage("rfid image set_src begin");
     lv_image_set_src(ui->screen_Standby_img_1, &_RFID_RGB565A8_150x150);
+    log_standby_stage("rfid image set_src end");
     lv_image_set_pivot(ui->screen_Standby_img_1, 50,50);
     lv_image_set_rotation(ui->screen_Standby_img_1, 0);
 
@@ -173,6 +200,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_image_recolor_opa(ui->screen_Standby_img_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_image_opa(ui->screen_Standby_img_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("last result begin");
     //Write codes screen_Standby_cont_last_result
     ui->screen_Standby_cont_last_result = lv_obj_create(ui->screen_Standby);
     lv_obj_set_pos(ui->screen_Standby_cont_last_result, 0, 260);
@@ -217,6 +245,7 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_pad_left(ui->screen_Standby_label_data, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui->screen_Standby_label_data, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("bottom label begin");
     //Write codes screen_Standby_label_5
     ui->screen_Standby_label_5 = lv_label_create(ui->screen_Standby);
     lv_obj_set_pos(ui->screen_Standby_label_5, 0, 290);
@@ -244,6 +273,8 @@ void setup_scr_screen_Standby(lv_ui *ui)
 
 
     //Update current screen layout.
+    log_standby_stage("update layout begin");
     lv_obj_update_layout(ui->screen_Standby);
+    log_standby_stage("screen end");
 
 }

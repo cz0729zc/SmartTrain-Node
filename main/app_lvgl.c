@@ -22,7 +22,7 @@ static lv_indev_t *s_lvgl_touch = NULL;
  * 480x320 横屏下若使用双缓冲，DMA 内存占用会显著增大，
  * 在当前系统内存布局下可能触发 "Not enough memory for LVGL buffer"。
  */
-#define LVGL_DRAW_BUF_LINES     20
+#define LVGL_DRAW_BUF_LINES     10
 
 /*
  * 固定横屏显示：

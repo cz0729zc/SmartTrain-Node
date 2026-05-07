@@ -83,15 +83,35 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void app_wifi_init(void)
 {
+    ESP_LOGI(TAG, "wifi_init: begin");
+
     s_wifi_event_group = xEventGroupCreate();
+    if (s_wifi_event_group == NULL) {
+        ESP_LOGE(TAG, "xEventGroupCreate failed");
+        abort();
+    }
+    ESP_LOGI(TAG, "wifi_init: event group ok");
 
-    ESP_ERROR_CHECK(esp_netif_init());
+    esp_err_t err = esp_netif_init();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(err));
+        ESP_ERROR_CHECK(err);
+    }
+    ESP_LOGI(TAG, "wifi_init: esp_netif_init ok (%s)", esp_err_to_name(err));
 
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    err = esp_event_loop_create_default();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "esp_event_loop_create_default failed: %s", esp_err_to_name(err));
+        ESP_ERROR_CHECK(err);
+    }
+    ESP_LOGI(TAG, "wifi_init: event loop ok (%s)", esp_err_to_name(err));
+
     esp_netif_create_default_wifi_sta();
+    ESP_LOGI(TAG, "wifi_init: create_default_wifi_sta ok");
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_LOGI(TAG, "wifi_init: esp_wifi_init ok");
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
@@ -121,8 +141,11 @@ void app_wifi_init(void)
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_LOGI(TAG, "wifi_init: set_mode ok");
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+    ESP_LOGI(TAG, "wifi_init: set_config ok");
     ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_LOGI(TAG, "wifi_init: esp_wifi_start ok");
 
     ESP_LOGI(TAG, "WiFi 初始化完成。");
 }

@@ -9,8 +9,24 @@
 
 #include "lvgl.h"
 #include <stdio.h>
+#include "esp_log.h"
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "gui_guider.h"
 #include "widgets_init.h"
+
+static const char *TAG = "gui_guider";
+
+static void ui_log_stage(const char *stage)
+{
+    ESP_LOGI(TAG, "%s core=%d stack_hwm=%u internal=%u dma=%u",
+             stage,
+             (int)xPortGetCoreID(),
+             (unsigned)uxTaskGetStackHighWaterMark(NULL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
 
 void ui_init_style(lv_style_t * style)
 {
@@ -84,16 +100,24 @@ void init_scr_del_flag(lv_ui *ui)
 
 void setup_bottom_layer(void)
 {
+    ui_log_stage("setup_bottom_layer begin");
     lv_theme_apply(lv_layer_bottom());
+    ui_log_stage("setup_bottom_layer end");
 }
 
 void setup_ui(lv_ui *ui)
 {
-    setup_bottom_layer();
+    ui_log_stage("setup_ui begin");
+    ESP_LOGI(TAG, "setup_bottom_layer skipped during boot");
+    ui_log_stage("init_scr_del_flag begin");
     init_scr_del_flag(ui);
+    ui_log_stage("init_keyboard begin");
     init_keyboard(ui);
+    ui_log_stage("setup_scr_screen begin");
     setup_scr_screen(ui);
+    ui_log_stage("lv_screen_load begin");
     lv_screen_load(ui->screen);
+    ui_log_stage("setup_ui end");
 }
 
 void video_play(lv_ui *ui)
