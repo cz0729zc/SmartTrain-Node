@@ -9,6 +9,8 @@
 
 static const char *TAG = "app_co2";
 
+#define APP_CO2_TASK_CORE 1
+
 /* ==================== 硬件配置 ==================== */
 #define CO2_UART_NUM        UART_NUM_1
 #define CO2_UART_TX_GPIO    GPIO_NUM_4    // 改用 GPIO4 避免与 PSRAM 冲突
@@ -70,7 +72,17 @@ esp_err_t app_co2_start(void)
     }
 
     // 创建采集任务 (栈大小增加到 4096 防止溢出)
+#if CONFIG_FREERTOS_UNICORE
     BaseType_t xret = xTaskCreate(co2_task, "co2_task", 4096, NULL, 5, &s_co2_task_handle);
+#else
+    BaseType_t xret = xTaskCreatePinnedToCore(co2_task,
+                                              "co2_task",
+                                              4096,
+                                              NULL,
+                                              5,
+                                              &s_co2_task_handle,
+                                              APP_CO2_TASK_CORE);
+#endif
     if (xret != pdPASS) {
         ESP_LOGE(TAG, "创建 CO2 任务失败");
         driver_co2_deinit();

@@ -173,6 +173,37 @@ ESP-IDF 默认事件循环
 network_task 通过 xEventGroupWaitBits(CONNECTED | FAIL) 阻塞等待连接结果
 ```
 
+### 4.5 双核任务分配与亲和性约束 (ESP32-S3)
+
+参考资料：<https://blog.csdn.net/m9n0o/article/details/155566723>
+
+核心思想摘要（已映射到本项目执行规则）：
+
+- 默认启动时，系统倾向把 WiFi/协议栈放在 Core 0，`app_main()` 从 Core 1 起跑，但用户任务若不绑定，会在双核间迁移。
+- 任务迁移会带来缓存失效、上下文切换开销和共享外设一致性风险，长期压力下容易诱发抖动或异常重启。
+- 必须显式绑定核心 (`xTaskCreatePinnedToCore`)；跨核通信优先用队列/事件组，避免裸全局变量。
+- 同一核心内同优先级任务数量尽量控制在 3 个以内，避免时间片过度切换。
+
+#### 本项目推荐分工 (ESP32-S3)
+
+- Core 0: 网络与协议栈 (WiFi 事件/连接、MQTT、SNTP 对时、日志上报)
+- Core 1: UI 与本地感知 (LVGL/UI 刷新、触摸输入、传感器采集、指纹/人脸/射频业务)
+
+#### 本项目已落地的关键点
+
+- `app_network` 任务固定到 Core 0。
+- `app_sensor`、`app_co2`、指纹演示任务固定到 Core 1。
+- LVGL port 任务通过 `task_affinity = 1` 固定到 Core 1。
+
+#### 配置建议 (menuconfig)
+
+- 固定 WiFi 任务到 Core 0: `CONFIG_ESP_WIFI_TASK_PINNED_TO_CORE_0=y`
+- 如启用 BT，建议 `CONFIG_BTDM_CTRL_PINNED_TO_CORE=0`
+
+#### 运行时验证
+
+使用 `idf.py monitor` 并执行 `tasks` 查看 Core 列，确保网络任务在 Core 0，UI/传感器在 Core 1。
+
 ---
 
 ## 5. 组件间通信规则

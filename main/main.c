@@ -10,6 +10,8 @@
 #include "app_lvgl.h"
 #include "app_face.h"
 #include "app_fingerprint.h"
+// #include 
+
 
 #include <ctype.h>
 #include <stdint.h>
@@ -17,6 +19,8 @@
 
 #include "esp_timer.h"
 #include "esp_lvgl_port.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -51,6 +55,33 @@ static attendance_profile_t s_active_profile = {0};
 static SemaphoreHandle_t s_bio_mutex = NULL;
 static char s_admin_target_sid[ATTENDANCE_STUDENT_ID_MAX_LEN] = {0};
 static lv_obj_t *s_touch_info_label = NULL;
+
+static void log_system_status(const char *stage)
+{
+    if (stage == NULL) {
+        stage = "unknown";
+    }
+
+    uint32_t free_heap = esp_get_free_heap_size();
+    size_t free_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    size_t total_8bit = heap_caps_get_total_size(MALLOC_CAP_8BIT);
+    size_t free_internal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    size_t free_dma = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    size_t total_dma = heap_caps_get_total_size(MALLOC_CAP_DMA);
+
+    ESP_LOGI(TAG,
+             "[%s] core=%d free_heap=%u 8bit=%u/%u internal=%u/%u dma=%u/%u",
+             stage,
+             (int)xPortGetCoreID(),
+             (unsigned)free_heap,
+             (unsigned)free_8bit,
+             (unsigned)total_8bit,
+             (unsigned)free_internal,
+             (unsigned)total_internal,
+             (unsigned)free_dma,
+             (unsigned)total_dma);
+}
 
 static bool is_admin_card(const char *uid_str)
 {
@@ -195,6 +226,14 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    log_system_status("nvs_inited");
+
+    //提前初始化网络接口，避免后续模块初始化时重复初始化浪费内存和时间
+    // esp_err_t netif_ret = esp_netif_init();
+    // if (netif_ret != ESP_OK && netif_ret != ESP_ERR_INVALID_STATE) {
+    //     ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(netif_ret));
+    // }
+
     ESP_LOGI(TAG, "开始自检 RFID 模块...");
     s_rfid_ready = (app_rfid_probe(250) == ESP_OK);
     if (s_rfid_ready) {
@@ -242,31 +281,33 @@ void app_main(void)
         ESP_LOGW(TAG, "DHT11 自检失败");
     }
 
-    ESP_ERROR_CHECK(app_lvgl_init());
-    ESP_LOGI(TAG, "初始化 Guider UI...");
+    // ESP_ERROR_CHECK(app_lvgl_init());
+    // ESP_LOGI(TAG, "初始化 Guider UI...");
 
     // /* app_main 任务中调用 LVGL API 需要先加锁，避免与 taskLVGL 并发访问 */
-    lvgl_port_lock(0);
-    setup_ui(&guider_ui);
-    events_init(&guider_ui);
+    // lvgl_port_lock(0);
+    // setup_ui(&guider_ui);
+    // events_init(&guider_ui);
 
-    //touch测试
-    // create_lvgl_touch_test_screen();
+    // //touch测试
+    // // create_lvgl_touch_test_screen();
 
-    events_selfcheck_set_result(EVENTS_SC_RFID,
-                                s_rfid_ready,
-                                s_rfid_ready ? "RFID module ready" : "RFID module failed");
-    events_selfcheck_set_result(EVENTS_SC_FACE,
-                                s_face_ready,
-                                s_face_ready ? "Face module ready" : "Face module failed");
-    events_selfcheck_set_result(EVENTS_SC_FINGER,
-                                s_finger_ready,
-                                s_finger_ready ? "Finger module ready" : "Finger module failed");
-    events_selfcheck_set_result(EVENTS_SC_NETWORK,
-                                s_sensor_ready,
-                                s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
-    events_selfcheck_finish();
-    lvgl_port_unlock();
+    // events_selfcheck_set_result(EVENTS_SC_RFID,
+    //                             s_rfid_ready,
+    //                             s_rfid_ready ? "RFID module ready" : "RFID module failed");
+    // events_selfcheck_set_result(EVENTS_SC_FACE,
+    //                             s_face_ready,
+    //                             s_face_ready ? "Face module ready" : "Face module failed");
+    // events_selfcheck_set_result(EVENTS_SC_FINGER,
+    //                             s_finger_ready,
+    //                             s_finger_ready ? "Finger module ready" : "Finger module failed");
+    // events_selfcheck_set_result(EVENTS_SC_NETWORK,
+    //                             s_sensor_ready,
+    //                             s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
+    // events_selfcheck_finish();
+    // lvgl_port_unlock();
 
+    ESP_ERROR_CHECK(app_network_start());
+    log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }

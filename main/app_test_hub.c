@@ -29,6 +29,7 @@
 #define FM225_UART_BAUD     115200
 
 static const char *TAG = "app_test_hub";
+#define APP_TEST_FP_TASK_CORE 1
 #if RUN_AS608_SELF_TEST || RUN_AS608_ENROLL_DEMO || RUN_AS608_IDENTIFY_DEMO
 static bool s_fp_ready = true;
 #endif
@@ -370,7 +371,17 @@ void app_test_hub_start_optional_tasks(void)
     // 可选演示任务：需要持续轮询时才创建 FreeRTOS 任务。
 #if RUN_AS608_ENROLL_DEMO || RUN_AS608_IDENTIFY_DEMO
     if (s_fp_ready) {
+#if CONFIG_FREERTOS_UNICORE
         xTaskCreate(fingerprint_demo_task, "fp_demo", 4096, NULL, 5, NULL);
+#else
+        xTaskCreatePinnedToCore(fingerprint_demo_task,
+                                "fp_demo",
+                                4096,
+                                NULL,
+                                5,
+                                NULL,
+                                APP_TEST_FP_TASK_CORE);
+#endif
     }
 #endif
 }

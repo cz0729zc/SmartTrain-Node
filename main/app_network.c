@@ -10,6 +10,8 @@
 
 static const char *TAG = "app_network";
 
+#define APP_NETWORK_TASK_CORE 0
+
 /* OneNET 物模型主题 (业务层定义)
  * 产品ID = MQTT_USERNAME
  * 设备名 = MQTT_CLIENT_ID
@@ -151,8 +153,18 @@ esp_err_t app_network_start(void)
     }
 
     // 创建网络任务，栈大小分配 4096 字节，因为后续 MQTT 和 TLS 需要较大栈空间
+#if CONFIG_FREERTOS_UNICORE
     BaseType_t ret = xTaskCreate(network_task, "network_task", 4096, NULL, 5, &s_network_task_handle);
-    
+#else
+    BaseType_t ret = xTaskCreatePinnedToCore(network_task,
+                                             "network_task",
+                                             4096,
+                                             NULL,
+                                             5,
+                                             &s_network_task_handle,
+                                             APP_NETWORK_TASK_CORE);
+#endif
+
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "创建网络任务失败");
         return ESP_FAIL;

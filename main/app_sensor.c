@@ -8,6 +8,8 @@
 
 static const char *TAG = "app_sensor";
 
+#define APP_SENSOR_TASK_CORE 1
+
 // 传感器配置
 #define DHT_SENSOR_TYPE DRIVER_DHT_TYPE_DHT11
 #define SENSOR_GPIO GPIO_NUM_6
@@ -50,8 +52,18 @@ esp_err_t app_sensor_start(void)
         return ESP_ERR_INVALID_STATE; // 任务已存在
     }
 
+#if CONFIG_FREERTOS_UNICORE
     BaseType_t ret = xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, &s_sensor_task_handle);
-    
+#else
+    BaseType_t ret = xTaskCreatePinnedToCore(sensor_task,
+                                             "sensor_task",
+                                             4096,
+                                             NULL,
+                                             5,
+                                             &s_sensor_task_handle,
+                                             APP_SENSOR_TASK_CORE);
+#endif
+
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "创建传感器任务失败");
         return ESP_FAIL;
