@@ -6,15 +6,16 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 static const char *TAG = "app_co2";
 
 #define APP_CO2_TASK_CORE 1
 
 /* ==================== 硬件配置 ==================== */
-#define CO2_UART_NUM        UART_NUM_1
-#define CO2_UART_TX_GPIO    GPIO_NUM_4    // 改用 GPIO4 避免与 PSRAM 冲突
-#define CO2_UART_RX_GPIO    GPIO_NUM_5    // 改用 GPIO5 避免与 PSRAM 冲突
+#define CO2_UART_NUM        UART_NUM_0    // UART1 留给 FM225, UART2 留给 AS608
+#define CO2_UART_TX_GPIO    GPIO_NUM_4    // 若启用 CO2, console 需切到 USB Serial/JTAG
+#define CO2_UART_RX_GPIO    GPIO_NUM_5
 #define CO2_READ_INTERVAL_MS 2000         // 采集间隔 2 秒
 /* ================================================= */
 
@@ -57,6 +58,11 @@ esp_err_t app_co2_start(void)
         ESP_LOGW(TAG, "CO2 模块已启动");
         return ESP_ERR_INVALID_STATE;
     }
+
+#if CONFIG_ESP_CONSOLE_UART && (CONFIG_ESP_CONSOLE_UART_NUM == 0)
+    ESP_LOGE(TAG, "CO2 使用 UART0，但当前 console 也在 UART0；请先通过 menuconfig 切换 console 到 USB Serial/JTAG");
+    return ESP_ERR_INVALID_STATE;
+#endif
 
     // 初始化 CO2 驱动
     driver_co2_config_t config = {

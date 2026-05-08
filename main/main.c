@@ -321,7 +321,7 @@ void app_main(void)
     ESP_LOGI(TAG, "UI selfcheck finish done");
 
     // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(1)); 
 
     ESP_ERROR_CHECK(app_network_start());
     ESP_ERROR_CHECK(app_perf_monitor_start());

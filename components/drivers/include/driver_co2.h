@@ -13,7 +13,7 @@ extern "C" {
 typedef struct {
     gpio_num_t tx_gpio;     // UART TX 引脚
     gpio_num_t rx_gpio;     // UART RX 引脚
-    int uart_num;           // UART 端口号 (UART_NUM_1 或 UART_NUM_2)
+    int uart_num;           // UART 端口号 (UART_NUM_0/1/2)
 } driver_co2_config_t;
 
 /**
