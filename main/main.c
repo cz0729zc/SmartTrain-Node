@@ -4,7 +4,6 @@
 #include "app_sensor.h"
 #include "app_network.h"
 #include "app_perf_monitor.h"
-#include "app_wifi.h"
 #include "app_rfid.h"
 #include "app_co2.h"
 #include "app_test_hub.h"
@@ -231,67 +230,58 @@ void app_main(void)
 
     log_system_status("nvs_inited");
 
-    //提前初始化网络接口，避免后续模块初始化时重复初始化浪费内存和时间
-    esp_err_t netif_ret = esp_netif_init();
-    if (netif_ret != ESP_OK && netif_ret != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(netif_ret));
-    }
+    // //提前初始化网络接口，避免后续模块初始化时重复初始化浪费内存和时间
+    // esp_err_t netif_ret = esp_netif_init();
+    // if (netif_ret != ESP_OK && netif_ret != ESP_ERR_INVALID_STATE) {
+    //     ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(netif_ret));
+    // }
 
-    ESP_LOGI(TAG, "开始自检 RFID 模块...");
-    s_rfid_ready = (app_rfid_probe(250) == ESP_OK);
-    if (s_rfid_ready) {
-        ESP_LOGI(TAG, "RFID 模块自检通过");
-    } else {
-        ESP_LOGW(TAG, "RFID 模块自检失败");
-    }
+    // ESP_LOGI(TAG, "开始自检 RFID 模块...");
+    // s_rfid_ready = (app_rfid_probe(250) == ESP_OK);
+    // if (s_rfid_ready) {
+    //     ESP_LOGI(TAG, "RFID 模块自检通过");
+    // } else {
+    //     ESP_LOGW(TAG, "RFID 模块自检失败");
+    // }
 
-    ESP_LOGI(TAG, "开始自检人脸模块...");
-    app_face_config_t face_cfg = {
-        .uart_num = FM225_UART_NUM,
-        .tx_gpio = FM225_UART_TX_GPIO,
-        .rx_gpio = FM225_UART_RX_GPIO,
-        .baud_rate = FM225_UART_BAUD,
-        .cmd_timeout_ms = 3000,
-    };
-    if (app_face_init(&face_cfg) == ESP_OK && app_face_wait_ready(1000) == ESP_OK) {
-        s_face_ready = true;
-        ESP_LOGI(TAG, "人脸模块自检通过");
-    } else {
-        s_face_ready = false;
-        ESP_LOGW(TAG, "人脸模块自检失败");
-    }
+    // ESP_LOGI(TAG, "开始自检人脸模块...");
+    // app_face_config_t face_cfg = {
+    //     .uart_num = FM225_UART_NUM,
+    //     .tx_gpio = FM225_UART_TX_GPIO,
+    //     .rx_gpio = FM225_UART_RX_GPIO,
+    //     .baud_rate = FM225_UART_BAUD,
+    //     .cmd_timeout_ms = 3000,
+    // };
+    // if (app_face_init(&face_cfg) == ESP_OK && app_face_wait_ready(1000) == ESP_OK) {
+    //     s_face_ready = true;
+    //     ESP_LOGI(TAG, "人脸模块自检通过");
+    // } else {
+    //     s_face_ready = false;
+    //     ESP_LOGW(TAG, "人脸模块自检失败");
+    // }
 
-    ESP_LOGI(TAG, "开始自检指纹模块...");
-    uint8_t finger_confirm = 0xFF;
-    driver_as608_sys_para_t finger_para = {0};
-    if (app_fingerprint_init() == ESP_OK
-        && app_fingerprint_get_sys_para(&finger_para, &finger_confirm) == ESP_OK
-        && finger_confirm == DRIVER_AS608_CONFIRM_OK) {
-        s_finger_ready = true;
-        ESP_LOGI(TAG, "指纹模块自检通过");
-    } else {
-        s_finger_ready = false;
-        ESP_LOGW(TAG, "指纹模块自检失败");
-    }
+    // ESP_LOGI(TAG, "开始自检指纹模块...");
+    // uint8_t finger_confirm = 0xFF;
+    // driver_as608_sys_para_t finger_para = {0};
+    // if (app_fingerprint_init() == ESP_OK
+    //     && app_fingerprint_get_sys_para(&finger_para, &finger_confirm) == ESP_OK
+    //     && finger_confirm == DRIVER_AS608_CONFIRM_OK) {
+    //     s_finger_ready = true;
+    //     ESP_LOGI(TAG, "指纹模块自检通过");
+    // } else {
+    //     s_finger_ready = false;
+    //     ESP_LOGW(TAG, "指纹模块自检失败");
+    // }
 
-    ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
-    float humidity = 0.0f;
-    float temperature = 0.0f;
-    s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
-    if (s_sensor_ready) {
-        ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
-    } else {
-        ESP_LOGW(TAG, "DHT11 自检失败");
-    }
-
-    /*
-     * WiFi driver init is heavy: it creates high-priority tasks and performs
-     * protocol/RF setup on core 0. Do it before LVGL starts its refresh task
-     * and spinner animation, so UI-only and WiFi-only timing paths do not
-     * collide during bring-up.
-     */
-    app_wifi_init();
-    vTaskDelay(pdMS_TO_TICKS(1));
+    // ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
+    // float humidity = 0.0f;
+    // float temperature = 0.0f;
+    // s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
+    // if (s_sensor_ready) {
+    //     ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
+    // } else {
+    //     ESP_LOGW(TAG, "DHT11 自检失败");
+    // }
 
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");
@@ -330,10 +320,11 @@ void app_main(void)
     events_selfcheck_finish();
     ESP_LOGI(TAG, "UI selfcheck finish done");
 
-    /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
+    // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
     vTaskDelay(pdMS_TO_TICKS(1));
 
     ESP_ERROR_CHECK(app_network_start());
+    ESP_ERROR_CHECK(app_perf_monitor_start());
     log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }
