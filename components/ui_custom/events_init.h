@@ -28,6 +28,11 @@ typedef enum {
 void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text);
 void events_selfcheck_finish(void);
 
+void events_show_standby(void);
+void events_standby_update_status(const char *time_text, bool wifi_connected);
+void events_show_admin(const char *card_text);
+void events_show_confirm(const char *student_id, const char *card_id);
+void events_show_unregistered(const char *card_id, const char *reason);
 
 #ifdef __cplusplus
 }

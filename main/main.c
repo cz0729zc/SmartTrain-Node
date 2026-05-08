@@ -11,6 +11,7 @@
 #include "app_lvgl.h"
 #include "app_face.h"
 #include "app_fingerprint.h"
+#include "app_attendance.h"
 #include "esp_netif.h"
 // #include 
 
@@ -322,6 +323,13 @@ void app_main(void)
 
     // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
     vTaskDelay(pdMS_TO_TICKS(1)); 
+
+    esp_err_t attendance_err = app_attendance_start();
+    if (attendance_err != ESP_OK) {
+        ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
+    }
+
+    events_show_standby();
 
     ESP_ERROR_CHECK(app_network_start());
     ESP_ERROR_CHECK(app_perf_monitor_start());

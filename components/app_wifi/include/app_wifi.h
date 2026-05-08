@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include "esp_err.h"
 
 /**
@@ -17,3 +18,8 @@ void app_wifi_init(void);
  * @return esp_err_t ESP_OK 表示连接成功，ESP_FAIL 表示失败
  */
 esp_err_t app_wifi_wait_connected(void);
+
+/**
+ * @brief Check whether WiFi STA currently has an IP connection.
+ */
+bool app_wifi_is_connected(void);

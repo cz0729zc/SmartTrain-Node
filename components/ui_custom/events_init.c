@@ -30,6 +30,13 @@ static lv_ui *s_ui = NULL;
 static bool s_selfcheck_failed = false;
 static bool s_standby_load_pending = false;
 static lv_timer_t *s_standby_delay_timer = NULL;
+static char s_standby_time_text[16] = "--:--:--";
+static bool s_standby_wifi_connected = false;
+static char s_admin_card_text[48] = {0};
+static char s_confirm_student_id[32] = {0};
+static char s_confirm_card_id[48] = {0};
+static char s_unregistered_card_id[48] = {0};
+static char s_unregistered_reason[48] = {0};
 static const char *TAG = "events_init";
 
 #define SELFCHECK_STANDBY_DELAY_MS 5000
@@ -78,6 +85,18 @@ static void load_standby_screen(void)
 
 	log_ui_mem("standby screen_load begin");
 	lv_screen_load(s_ui->screen_Standby);
+	if (s_ui->screen_Standby_label_time != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_time, s_standby_time_text);
+	}
+	if (s_ui->screen_Standby_label_1 != NULL) {
+		lv_obj_set_style_text_color(s_ui->screen_Standby_label_1,
+			s_standby_wifi_connected ? lv_color_hex(0x52C41A) : lv_color_hex(0xBFBFBF),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_Standby_label_2 != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_2,
+			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
+	}
 	log_ui_mem("standby screen_load end");
 	s_standby_load_pending = false;
 }
@@ -294,7 +313,7 @@ void events_init(lv_ui *ui)
 void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text)
 {
 	ESP_LOGI(TAG, "selfcheck set begin item=%d ok=%d", (int)item, (int)ok);
-	if (lvgl_port_lock(0)) {
+	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
 		selfcheck_apply_result(item, ok, log_text);
 		lvgl_port_unlock();
 	}
@@ -304,9 +323,127 @@ void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const ch
 void events_selfcheck_finish(void)
 {
 	ESP_LOGI(TAG, "selfcheck finish begin");
-	if (lvgl_port_lock(0)) {
+	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
 		selfcheck_finish_cb(NULL);
 		lvgl_port_unlock();
 	}
 	ESP_LOGI(TAG, "selfcheck finish end");
+}
+
+void events_show_standby(void)
+{
+	request_standby_screen_load();
+}
+
+static void standby_sync_ui(void *arg)
+{
+	(void)arg;
+	if (s_ui == NULL) {
+		return;
+	}
+	if (s_ui->screen_Standby_label_time != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_time, s_standby_time_text);
+	}
+	if (s_ui->screen_Standby_label_1 != NULL) {
+		lv_obj_set_style_text_color(s_ui->screen_Standby_label_1,
+			s_standby_wifi_connected ? lv_color_hex(0x52C41A) : lv_color_hex(0xBFBFBF),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_Standby_label_2 != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_2,
+			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
+	}
+}
+
+void events_standby_update_status(const char *time_text, bool wifi_connected)
+{
+	if (time_text != NULL && time_text[0] != '\0') {
+		strlcpy(s_standby_time_text, time_text, sizeof(s_standby_time_text));
+	}
+	s_standby_wifi_connected = wifi_connected;
+	lv_async_call(standby_sync_ui, NULL);
+}
+
+void events_show_admin(const char *card_text)
+{
+	if (card_text != NULL) {
+		strlcpy(s_admin_card_text, card_text, sizeof(s_admin_card_text));
+	}
+	if (s_ui == NULL) {
+		return;
+	}
+	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+		if (s_ui->screen_admin_del) {
+			setup_scr_screen_admin(s_ui);
+			s_ui->screen_admin_del = false;
+		}
+		if (s_ui->screen_admin_label_9 != NULL) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "学员:%s", s_admin_card_text);
+			lv_label_set_text(s_ui->screen_admin_label_9, buf);
+		}
+		lv_screen_load(s_ui->screen_admin);
+		lvgl_port_unlock();
+	}
+}
+
+void events_show_confirm(const char *student_id, const char *card_id)
+{
+	if (student_id != NULL) {
+		strlcpy(s_confirm_student_id, student_id, sizeof(s_confirm_student_id));
+	}
+	if (card_id != NULL) {
+		strlcpy(s_confirm_card_id, card_id, sizeof(s_confirm_card_id));
+	}
+	if (s_ui == NULL) {
+		return;
+	}
+	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+		if (s_ui->screen_Confirm_del) {
+			setup_scr_screen_Confirm(s_ui);
+			s_ui->screen_Confirm_del = false;
+		}
+		if (s_ui->screen_Confirm_label_studentID != NULL) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "学号:%s", s_confirm_student_id);
+			lv_label_set_text(s_ui->screen_Confirm_label_studentID, buf);
+		}
+		if (s_ui->screen_Confirm_label_Card != NULL) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "Card:%s", s_confirm_card_id);
+			lv_label_set_text(s_ui->screen_Confirm_label_Card, buf);
+		}
+		lv_screen_load(s_ui->screen_Confirm);
+		lvgl_port_unlock();
+	}
+}
+
+void events_show_unregistered(const char *card_id, const char *reason)
+{
+	if (card_id != NULL) {
+		strlcpy(s_unregistered_card_id, card_id, sizeof(s_unregistered_card_id));
+	}
+	if (reason != NULL) {
+		strlcpy(s_unregistered_reason, reason, sizeof(s_unregistered_reason));
+	}
+	if (s_ui == NULL) {
+		return;
+	}
+	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+		if (s_ui->screen_unregistered_del) {
+			setup_scr_screen_unregistered(s_ui);
+			s_ui->screen_unregistered_del = false;
+		}
+		if (s_ui->screen_unregistered_label_Card != NULL) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "Card:%s", s_unregistered_card_id);
+			lv_label_set_text(s_ui->screen_unregistered_label_Card, buf);
+		}
+		if (s_ui->screen_unregistered_label_28 != NULL) {
+			lv_label_set_text(s_ui->screen_unregistered_label_28,
+				s_unregistered_reason[0] ? s_unregistered_reason : "未知卡片");
+		}
+		lv_screen_load(s_ui->screen_unregistered);
+		lvgl_port_unlock();
+	}
 }
