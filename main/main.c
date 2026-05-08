@@ -4,6 +4,7 @@
 #include "app_sensor.h"
 #include "app_network.h"
 #include "app_perf_monitor.h"
+#include "app_wifi.h"
 #include "app_rfid.h"
 #include "app_co2.h"
 #include "app_test_hub.h"
@@ -283,6 +284,15 @@ void app_main(void)
         ESP_LOGW(TAG, "DHT11 自检失败");
     }
 
+    /*
+     * WiFi driver init is heavy: it creates high-priority tasks and performs
+     * protocol/RF setup on core 0. Do it before LVGL starts its refresh task
+     * and spinner animation, so UI-only and WiFi-only timing paths do not
+     * collide during bring-up.
+     */
+    app_wifi_init();
+    vTaskDelay(pdMS_TO_TICKS(1));
+
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");
 
@@ -324,7 +334,6 @@ void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(1));
 
     ESP_ERROR_CHECK(app_network_start());
-    ESP_ERROR_CHECK(app_perf_monitor_start());
     log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }

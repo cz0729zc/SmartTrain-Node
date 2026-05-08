@@ -1,5 +1,6 @@
 #include "app_network.h"
 #include "app_wifi.h"
+#include "app_perf_monitor.h"
 #include "app_mqtt.h"
 #include "app_time.h"
 #include "sensor_data.h"
@@ -70,6 +71,10 @@ static void network_task(void *pvParameters)
 
     // 1. 初始化 WiFi 组件 (调用 components/app_wifi)
     app_wifi_init();
+    esp_err_t perf_err = app_perf_monitor_start();
+    if (perf_err != ESP_OK && perf_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG, "perf monitor start failed: %s", esp_err_to_name(perf_err));
+    }
 
     // 2. 等待 WiFi 连接成功
     while (app_wifi_wait_connected() != ESP_OK) {

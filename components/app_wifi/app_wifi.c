@@ -6,6 +6,8 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
+#include "esp_netif.h"
 #include "nvs_flash.h"
 
 #include "lwip/err.h"
@@ -58,6 +60,22 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "app_wifi";
 
 static int s_retry_num = 0;
+static bool s_wifi_initialized = false;
+
+static void log_wifi_mem(const char *stage)
+{
+    if (stage == NULL) {
+        stage = "unknown";
+    }
+
+    ESP_LOGI(TAG,
+             "%s core=%d stack_hwm=%u internal=%u dma=%u",
+             stage,
+             (int)xPortGetCoreID(),
+             (unsigned)uxTaskGetStackHighWaterMark(NULL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -83,7 +101,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void app_wifi_init(void)
 {
+    if (s_wifi_initialized) {
+        ESP_LOGI(TAG, "wifi_init: already initialized");
+        return;
+    }
+
     ESP_LOGI(TAG, "wifi_init: begin");
+    log_wifi_mem("wifi_init mem begin");
 
     s_wifi_event_group = xEventGroupCreate();
     if (s_wifi_event_group == NULL) {
@@ -106,11 +130,17 @@ void app_wifi_init(void)
     }
     ESP_LOGI(TAG, "wifi_init: event loop ok (%s)", esp_err_to_name(err));
 
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    if (sta_netif == NULL) {
+        ESP_LOGE(TAG, "esp_netif_create_default_wifi_sta failed");
+        abort();
+    }
     ESP_LOGI(TAG, "wifi_init: create_default_wifi_sta ok");
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    log_wifi_mem("wifi_init before esp_wifi_init");
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    log_wifi_mem("wifi_init after esp_wifi_init");
     ESP_LOGI(TAG, "wifi_init: esp_wifi_init ok");
 
     esp_event_handler_instance_t instance_any_id;
@@ -145,8 +175,10 @@ void app_wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_LOGI(TAG, "wifi_init: set_config ok");
     ESP_ERROR_CHECK(esp_wifi_start() );
+    log_wifi_mem("wifi_init after esp_wifi_start");
     ESP_LOGI(TAG, "wifi_init: esp_wifi_start ok");
 
+    s_wifi_initialized = true;
     ESP_LOGI(TAG, "WiFi 初始化完成。");
 }
 

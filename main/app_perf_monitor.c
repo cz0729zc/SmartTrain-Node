@@ -15,6 +15,7 @@ static const char *TAG = "app_perf";
 #define APP_PERF_TASK_CORE         1
 #define APP_PERF_TASK_STACK        4096
 #define APP_PERF_TASK_PRIO         3
+#define APP_PERF_START_DELAY_MS    10000
 #define APP_PERF_SAMPLE_PERIOD_MS  2000
 #define APP_PERF_TOP_N             12
 
@@ -69,6 +70,13 @@ static void perf_monitor_task(void *arg)
     runtime_snapshot_t *prev = NULL;
     UBaseType_t prev_count = 0;
     uint32_t prev_total_runtime = 0;
+
+    /*
+     * WiFi init creates high-priority tasks and allocates internal/DMA memory.
+     * Avoid sampling the task list in that unstable window; the monitor is a
+     * diagnostic tool and must not contend with driver bring-up.
+     */
+    vTaskDelay(pdMS_TO_TICKS(APP_PERF_START_DELAY_MS));
 
     while (1) {
         UBaseType_t task_count = uxTaskGetNumberOfTasks();
@@ -189,6 +197,9 @@ esp_err_t app_perf_monitor_start(void)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "perf monitor started, period=%dms", APP_PERF_SAMPLE_PERIOD_MS);
+    ESP_LOGI(TAG,
+             "perf monitor started, first sample delayed %dms, period=%dms",
+             APP_PERF_START_DELAY_MS,
+             APP_PERF_SAMPLE_PERIOD_MS);
     return ESP_OK;
 }

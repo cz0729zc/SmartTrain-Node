@@ -59,7 +59,6 @@ flasher_args.json
 # ESP-IDF Specific
 # ==========================================
 # Local configuration (submit sdkconfig.defaults instead)
-sdkconfig
 sdkconfig.old
 sdkconfig.ci
 # Keep sdkconfig.defaults and other variants
