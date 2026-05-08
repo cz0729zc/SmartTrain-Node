@@ -59,6 +59,13 @@ static SemaphoreHandle_t s_bio_mutex = NULL;
 static char s_admin_target_sid[ATTENDANCE_STUDENT_ID_MAX_LEN] = {0};
 static lv_obj_t *s_touch_info_label = NULL;
 
+/*
+ * Set to 1 to boot into an LVGL touch hit-test page only.
+ * The test places buttons at the four corners and center of the 480x320
+ * logical landscape screen.
+ */
+#define RUN_LVGL_TOUCH_BUTTON_TEST 1
+
 static void log_system_status(const char *stage)
 {
     if (stage == NULL) {
@@ -91,12 +98,14 @@ static bool is_admin_card(const char *uid_str)
     return uid_str != NULL && strcmp(uid_str, ADMIN_CARD_UID) == 0;
 }
 
-static void lvgl_touch_test_event_cb(lv_event_t *e)
+static void lvgl_touch_button_test_event_cb(lv_event_t *e)
 {
     if (e == NULL) {
         return;
     }
 
+    const char *name = (const char *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
     lv_indev_t *indev = lv_event_get_indev(e);
     if (indev == NULL) {
         indev = lv_indev_get_act();
@@ -109,13 +118,38 @@ static void lvgl_touch_test_event_cb(lv_event_t *e)
 
     lv_point_t point = {0};
     lv_indev_get_point(indev, &point);
-    ESP_LOGI(TAG, "LVGL touch: x=%d, y=%d", (int)point.x, (int)point.y);
+    ESP_LOGI(TAG, "LVGL touch button=%s event=%d x=%d y=%d",
+             name ? name : "unknown", (int)code, (int)point.x, (int)point.y);
 
     if (s_touch_info_label != NULL) {
-        char buf[64];
-        snprintf(buf, sizeof(buf), "LVGL touch: x=%d, y=%d", (int)point.x, (int)point.y);
+        char buf[96];
+        snprintf(buf, sizeof(buf), "%s: x=%d y=%d",
+                 name ? name : "touch", (int)point.x, (int)point.y);
         lv_label_set_text(s_touch_info_label, buf);
     }
+}
+
+static void create_touch_test_button(lv_obj_t *parent,
+                                     const char *name,
+                                     lv_align_t align,
+                                     int32_t x_ofs,
+                                     int32_t y_ofs)
+{
+    lv_obj_t *btn = lv_button_create(parent);
+    lv_obj_set_size(btn, 112, 56);
+    lv_obj_align(btn, align, x_ofs, y_ofs);
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(btn, lvgl_touch_button_test_event_cb, LV_EVENT_PRESSED, (void *)name);
+    lv_obj_add_event_cb(btn, lvgl_touch_button_test_event_cb, LV_EVENT_CLICKED, (void *)name);
+
+    lv_obj_t *label = lv_label_create(btn);
+    lv_label_set_text(label, name);
+    lv_obj_center(label);
+
+    lv_area_t area;
+    lv_obj_get_coords(btn, &area);
+    ESP_LOGI(TAG, "Touch test button %s area: x1=%d y1=%d x2=%d y2=%d",
+             name, (int)area.x1, (int)area.y1, (int)area.x2, (int)area.y2);
 }
 
 static void create_lvgl_touch_test_screen(void)
@@ -132,20 +166,16 @@ static void create_lvgl_touch_test_screen(void)
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 18);
 
     s_touch_info_label = lv_label_create(scr);
-    lv_label_set_text(s_touch_info_label, "Touch here");
+    lv_label_set_text(s_touch_info_label, "Press a button");
     lv_obj_set_style_text_color(s_touch_info_label, lv_color_hex(0x7FDBFF), LV_PART_MAIN);
     lv_obj_set_style_text_font(s_touch_info_label, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_align(s_touch_info_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(s_touch_info_label, LV_ALIGN_CENTER, 0, 48);
 
-    lv_obj_t *pad = lv_btn_create(scr);
-    lv_obj_set_size(pad, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_shadow_opa(pad, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_clear_flag(pad, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_PRESSED, NULL);
-    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_PRESSING, NULL);
-    lv_obj_add_event_cb(pad, lvgl_touch_test_event_cb, LV_EVENT_RELEASED, NULL);
+    create_touch_test_button(scr, "TOP LEFT", LV_ALIGN_TOP_LEFT, 8, 56);
+    create_touch_test_button(scr, "TOP RIGHT", LV_ALIGN_TOP_RIGHT, -8, 56);
+    create_touch_test_button(scr, "BOTTOM LEFT", LV_ALIGN_BOTTOM_LEFT, 8, -8);
+    create_touch_test_button(scr, "BOTTOM RIGHT", LV_ALIGN_BOTTOM_RIGHT, -8, -8);
+    create_touch_test_button(scr, "CENTER", LV_ALIGN_CENTER, 0, -24);
 
     lv_screen_load(scr);
 }
@@ -288,51 +318,59 @@ void app_main(void)
     ESP_LOGI(TAG, "初始化 Guider UI...");
 
     /* app_main 任务中调用 LVGL API 需要先加锁，避免与 taskLVGL 并发访问 */
-    ESP_LOGI(TAG, "Guider UI lock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+#if RUN_LVGL_TOUCH_BUTTON_TEST
+    ESP_LOGI(TAG, "RUN_LVGL_TOUCH_BUTTON_TEST enabled, booting touch hit-test screen only");
     lvgl_port_lock(0);
-    ESP_LOGI(TAG, "Guider UI setup begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    setup_ui(&guider_ui);
-    ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    events_init(&guider_ui);
-    ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    create_lvgl_touch_test_screen();
     lvgl_port_unlock();
-    ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    return;
+#endif
+
+    // ESP_LOGI(TAG, "Guider UI lock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    // lvgl_port_lock(0);
+    // // ESP_LOGI(TAG, "Guider UI setup begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    // setup_ui(&guider_ui);
+    // // ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    // events_init(&guider_ui);
+    // // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    // lvgl_port_unlock();
+    // ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
 
     //touch测试
     // create_lvgl_touch_test_screen();
 
-    ESP_LOGI(TAG, "UI selfcheck result: RFID begin");
-    events_selfcheck_set_result(EVENTS_SC_RFID,
-                                s_rfid_ready,
-                                s_rfid_ready ? "RFID module ready" : "RFID module failed");
-    ESP_LOGI(TAG, "UI selfcheck result: FACE begin");
-    events_selfcheck_set_result(EVENTS_SC_FACE,
-                                s_face_ready,
-                                s_face_ready ? "Face module ready" : "Face module failed");
-    ESP_LOGI(TAG, "UI selfcheck result: FINGER begin");
-    events_selfcheck_set_result(EVENTS_SC_FINGER,
-                                s_finger_ready,
-                                s_finger_ready ? "Finger module ready" : "Finger module failed");
-    ESP_LOGI(TAG, "UI selfcheck result: NETWORK begin");
-    events_selfcheck_set_result(EVENTS_SC_NETWORK,
-                                s_sensor_ready,
-                                s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
-    ESP_LOGI(TAG, "UI selfcheck finish begin");
-    events_selfcheck_finish();
-    ESP_LOGI(TAG, "UI selfcheck finish done");
+    // ESP_LOGI(TAG, "UI selfcheck result: RFID begin");
+    // events_selfcheck_set_result(EVENTS_SC_RFID,
+    //                             s_rfid_ready,
+    //                             s_rfid_ready ? "RFID module ready" : "RFID module failed");
+    // ESP_LOGI(TAG, "UI selfcheck result: FACE begin");
+    // events_selfcheck_set_result(EVENTS_SC_FACE,
+    //                             s_face_ready,
+    //                             s_face_ready ? "Face module ready" : "Face module failed");
+    // ESP_LOGI(TAG, "UI selfcheck result: FINGER begin");
+    // events_selfcheck_set_result(EVENTS_SC_FINGER,
+    //                             s_finger_ready,
+    //                             s_finger_ready ? "Finger module ready" : "Finger module failed");
+    // ESP_LOGI(TAG, "UI selfcheck result: NETWORK begin");
+    // events_selfcheck_set_result(EVENTS_SC_NETWORK,
+    //                             s_sensor_ready,
+    //                             s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
+    // ESP_LOGI(TAG, "UI selfcheck finish begin");
+    // events_selfcheck_finish();
+    // ESP_LOGI(TAG, "UI selfcheck finish done");
 
-    // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
-    vTaskDelay(pdMS_TO_TICKS(1)); 
+    // // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
+    // vTaskDelay(pdMS_TO_TICKS(1)); 
 
-    esp_err_t attendance_err = app_attendance_start();
-    if (attendance_err != ESP_OK) {
-        ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
-    }
+    // esp_err_t attendance_err = app_attendance_start();
+    // if (attendance_err != ESP_OK) {
+    //     ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
+    // }
 
-    events_show_standby();
+    // events_show_standby();
 
-    ESP_ERROR_CHECK(app_network_start());
-    ESP_ERROR_CHECK(app_perf_monitor_start());
-    log_system_status("network_started");
+    // ESP_ERROR_CHECK(app_network_start());
+    // ESP_ERROR_CHECK(app_perf_monitor_start());
+    // log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }

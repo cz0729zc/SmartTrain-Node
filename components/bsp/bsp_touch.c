@@ -12,6 +12,17 @@
 
 static const char *TAG = "bsp_touch";
 
+/*
+ * XPT2046 raw touch direction is already aligned with the visible landscape UI
+ * on this panel. Only the coordinate range must match LVGL's 480x320 logical
+ * screen; adding swap/mirror rotates the hit-test positions.
+ */
+#define BSP_TOUCH_LOGICAL_H_RES       BSP_LCD_V_RES
+#define BSP_TOUCH_LOGICAL_V_RES       BSP_LCD_H_RES
+#define BSP_TOUCH_LANDSCAPE_SWAP_XY   0
+#define BSP_TOUCH_LANDSCAPE_MIRROR_X  0
+#define BSP_TOUCH_LANDSCAPE_MIRROR_Y  0
+
 /*******************************************************************************
  * 静态变量
  ******************************************************************************/
@@ -40,8 +51,8 @@ esp_err_t bsp_touch_init(void)
 
     /* 配置触摸屏 */
     esp_lcd_touch_config_t tp_cfg = {
-        .x_max = BSP_LCD_H_RES,
-        .y_max = BSP_LCD_V_RES,
+        .x_max = BSP_TOUCH_LOGICAL_H_RES,
+        .y_max = BSP_TOUCH_LOGICAL_V_RES,
         .rst_gpio_num = GPIO_NUM_NC,
         .int_gpio_num = BSP_TOUCH_INT,
         .levels = {
@@ -49,9 +60,9 @@ esp_err_t bsp_touch_init(void)
             .interrupt = 0,
         },
         .flags = {
-            .swap_xy = 0,
-            .mirror_x = 0,
-            .mirror_y = 0,
+            .swap_xy = BSP_TOUCH_LANDSCAPE_SWAP_XY,
+            .mirror_x = BSP_TOUCH_LANDSCAPE_MIRROR_X,
+            .mirror_y = BSP_TOUCH_LANDSCAPE_MIRROR_Y,
         },
         .process_coordinates = NULL,
         .interrupt_callback = NULL,
