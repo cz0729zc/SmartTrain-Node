@@ -24,8 +24,6 @@ static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 #define CHECK_LOGE(x, msg, ...) do { \
         esp_err_t __; \
         if ((__ = x) != ESP_OK) { \
-            PORT_EXIT_CRITICAL(); \
-            ESP_LOGE(TAG, msg, ## __VA_ARGS__); \
             return __; \
         } \
     } while (0)
@@ -61,6 +59,27 @@ static esp_err_t driver_dht_await_pin_state(gpio_num_t pin, uint32_t timeout,
     return ESP_ERR_TIMEOUT;
 }
 
+static esp_err_t driver_dht_hold_start_low(driver_dht_type_t sensor_type, gpio_num_t pin)
+{
+    esp_err_t err = gpio_set_direction(pin, GPIO_MODE_OUTPUT_OD);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = gpio_set_level(pin, 0);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (sensor_type == DRIVER_DHT_TYPE_SI7021) {
+        ets_delay_us(500);
+    } else {
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+
+    return ESP_OK;
+}
+
 /**
  * @brief 从 DHT 请求数据并读取原始比特流
  * 
@@ -71,18 +90,10 @@ static esp_err_t driver_dht_await_pin_state(gpio_num_t pin, uint32_t timeout,
  * @param[out] data 读取到的原始数据
  * @return esp_err_t 
  */
-static inline esp_err_t driver_dht_fetch_data(driver_dht_type_t sensor_type, gpio_num_t pin, uint8_t data[DHT_DATA_BYTES])
+static inline esp_err_t driver_dht_fetch_data(gpio_num_t pin, uint8_t data[DHT_DATA_BYTES])
 {
     uint32_t low_duration;
     uint32_t high_duration;
-
-// 阶段 'A': 拉低信号以启动读取序列
-    // 设置为开漏输出模式
-    gpio_set_direction(pin, GPIO_MODE_OUTPUT_OD); 
-    gpio_set_level(pin, 0);
-    // 根据传感器类型等待不同的时间
-    ets_delay_us(sensor_type == DRIVER_DHT_TYPE_SI7021 ? 500 : 20000);
-    gpio_set_level(pin, 1);
 
     // 阶段 'B': 40us
     // DHT 响应信号 Low: 80us, High: 80us. 
@@ -155,11 +166,17 @@ esp_err_t driver_dht_read_data(driver_dht_type_t sensor_type, gpio_num_t pin,
     // 初始状态保持高电平
     gpio_set_direction(pin, GPIO_MODE_OUTPUT_OD);
     gpio_set_level(pin, 1);
+    vTaskDelay(pdMS_TO_TICKS(2));
 
-    // 进入临界区，防止任务调度打断时序
+    esp_err_t result = driver_dht_hold_start_low(sensor_type, pin);
+    if (result != ESP_OK) {
+        return result;
+    }
+
+    // 只保护 DHT 响应和 40bit 数据窗口；20ms 起始低电平已在上方让出 CPU。
     PORT_ENTER_CRITICAL();
-    esp_err_t result = driver_dht_fetch_data(sensor_type, pin, data);
-    // 无论成功失败，都需要退出临界区
+    gpio_set_level(pin, 1);
+    result = driver_dht_fetch_data(pin, data);
     PORT_EXIT_CRITICAL();
 
     /* 恢复 GPIO 方向，因为调用 fetch_data 后 GPIO 可能处于输入状态 */
@@ -181,7 +198,9 @@ esp_err_t driver_dht_read_data(driver_dht_type_t sensor_type, gpio_num_t pin,
     if (temperature)
         *temperature = driver_dht_convert_data(sensor_type, data[2], data[3]);
 
-    ESP_LOGD(TAG, "传感器数据: humidity=%d, temp=%d", *humidity, *temperature);
+    ESP_LOGD(TAG, "传感器数据: humidity=%d, temp=%d",
+             humidity ? *humidity : 0,
+             temperature ? *temperature : 0);
 
     return ESP_OK;
 }

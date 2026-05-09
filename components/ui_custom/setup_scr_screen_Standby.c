@@ -200,6 +200,74 @@ void setup_scr_screen_Standby(lv_ui *ui)
     lv_obj_set_style_image_recolor_opa(ui->screen_Standby_img_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
     lv_obj_set_style_image_opa(ui->screen_Standby_img_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
 
+    log_standby_stage("environment begin");
+    //Write codes screen_Standby_cont_environment
+    ui->screen_Standby_cont_environment = lv_obj_create(ui->screen_Standby);
+    lv_obj_set_pos(ui->screen_Standby_cont_environment, 336, 108);
+    lv_obj_set_size(ui->screen_Standby_cont_environment, 130, 88);
+    lv_obj_set_scrollbar_mode(ui->screen_Standby_cont_environment, LV_SCROLLBAR_MODE_OFF);
+
+    //Write style for screen_Standby_cont_environment, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_Standby_cont_environment, 1, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui->screen_Standby_cont_environment, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui->screen_Standby_cont_environment, lv_color_hex(0xB7D7F5), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_side(ui->screen_Standby_cont_environment, LV_BORDER_SIDE_FULL, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Standby_cont_environment, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_Standby_cont_environment, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_Standby_cont_environment, lv_color_hex(0xFFFFFF), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_Standby_cont_environment, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_Standby_cont_environment, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_Standby_cont_environment, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_Standby_cont_environment, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_Standby_cont_environment, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Standby_cont_environment, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write codes screen_Standby_label_temperature
+    ui->screen_Standby_label_temperature = lv_label_create(ui->screen_Standby_cont_environment);
+    lv_obj_set_pos(ui->screen_Standby_label_temperature, 0, 14);
+    lv_obj_set_size(ui->screen_Standby_label_temperature, 130, 24);
+    lv_label_set_text(ui->screen_Standby_label_temperature, "Temp: --.-C");
+    lv_label_set_long_mode(ui->screen_Standby_label_temperature, LV_LABEL_LONG_WRAP);
+
+    //Write style for screen_Standby_label_temperature, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Standby_label_temperature, lv_color_hex(0x262626), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Standby_label_temperature, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Standby_label_temperature, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Standby_label_temperature, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_Standby_label_temperature, 2, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Standby_label_temperature, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write codes screen_Standby_label_humidity
+    ui->screen_Standby_label_humidity = lv_label_create(ui->screen_Standby_cont_environment);
+    lv_obj_set_pos(ui->screen_Standby_label_humidity, 0, 50);
+    lv_obj_set_size(ui->screen_Standby_label_humidity, 130, 24);
+    lv_label_set_text(ui->screen_Standby_label_humidity, "Humi: --.-%");
+    lv_label_set_long_mode(ui->screen_Standby_label_humidity, LV_LABEL_LONG_WRAP);
+
+    //Write style for screen_Standby_label_humidity, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_Standby_label_humidity, lv_color_hex(0x262626), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_Standby_label_humidity, &lv_font_montserratMedium_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_Standby_label_humidity, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_Standby_label_humidity, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_Standby_label_humidity, 2, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_Standby_label_humidity, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+
     log_standby_stage("last result begin");
     //Write codes screen_Standby_cont_last_result
     ui->screen_Standby_cont_last_result = lv_obj_create(ui->screen_Standby);

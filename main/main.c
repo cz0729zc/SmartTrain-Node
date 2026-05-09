@@ -64,7 +64,7 @@ static lv_obj_t *s_touch_info_label = NULL;
  * The test places buttons at the four corners and center of the 480x320
  * logical landscape screen.
  */
-#define RUN_LVGL_TOUCH_BUTTON_TEST 1
+#define RUN_LVGL_TOUCH_BUTTON_TEST 0
 
 static void log_system_status(const char *stage)
 {
@@ -267,13 +267,13 @@ void app_main(void)
     //     ESP_LOGE(TAG, "esp_netif_init failed: %s", esp_err_to_name(netif_ret));
     // }
 
-    // ESP_LOGI(TAG, "开始自检 RFID 模块...");
-    // s_rfid_ready = (app_rfid_probe(250) == ESP_OK);
-    // if (s_rfid_ready) {
-    //     ESP_LOGI(TAG, "RFID 模块自检通过");
-    // } else {
-    //     ESP_LOGW(TAG, "RFID 模块自检失败");
-    // }
+    ESP_LOGI(TAG, "开始自检 RFID 模块...");
+    s_rfid_ready = (app_rfid_probe(250) == ESP_OK);
+    if (s_rfid_ready) {
+        ESP_LOGI(TAG, "RFID 模块自检通过");
+    } else {
+        ESP_LOGW(TAG, "RFID 模块自检失败");
+    }
 
     // ESP_LOGI(TAG, "开始自检人脸模块...");
     // app_face_config_t face_cfg = {
@@ -327,50 +327,57 @@ void app_main(void)
 #endif
 
     // ESP_LOGI(TAG, "Guider UI lock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    // lvgl_port_lock(0);
-    // // ESP_LOGI(TAG, "Guider UI setup begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    // setup_ui(&guider_ui);
-    // // ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    // events_init(&guider_ui);
-    // // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
-    // lvgl_port_unlock();
+    lvgl_port_lock(0);
+    // ESP_LOGI(TAG, "Guider UI setup begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    setup_ui(&guider_ui);
+    // ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    events_init(&guider_ui);
+    // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    lvgl_port_unlock();
     // ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
 
-    //touch测试
+    // touch测试
     // create_lvgl_touch_test_screen();
 
-    // ESP_LOGI(TAG, "UI selfcheck result: RFID begin");
-    // events_selfcheck_set_result(EVENTS_SC_RFID,
-    //                             s_rfid_ready,
-    //                             s_rfid_ready ? "RFID module ready" : "RFID module failed");
-    // ESP_LOGI(TAG, "UI selfcheck result: FACE begin");
-    // events_selfcheck_set_result(EVENTS_SC_FACE,
-    //                             s_face_ready,
-    //                             s_face_ready ? "Face module ready" : "Face module failed");
-    // ESP_LOGI(TAG, "UI selfcheck result: FINGER begin");
-    // events_selfcheck_set_result(EVENTS_SC_FINGER,
-    //                             s_finger_ready,
-    //                             s_finger_ready ? "Finger module ready" : "Finger module failed");
-    // ESP_LOGI(TAG, "UI selfcheck result: NETWORK begin");
-    // events_selfcheck_set_result(EVENTS_SC_NETWORK,
-    //                             s_sensor_ready,
-    //                             s_sensor_ready ? "DHT11 sensor ready" : "DHT11 sensor failed");
-    // ESP_LOGI(TAG, "UI selfcheck finish begin");
-    // events_selfcheck_finish();
-    // ESP_LOGI(TAG, "UI selfcheck finish done");
+    ESP_LOGI(TAG, "UI selfcheck result: RFID begin");
+    events_selfcheck_set_result(EVENTS_SC_RFID,
+                                s_rfid_ready,
+                                s_rfid_ready ? "RFID module ready" : "RFID module failed");
+    ESP_LOGI(TAG, "UI selfcheck result: FACE begin");
+    events_selfcheck_set_result(EVENTS_SC_FACE,
+                                s_face_ready,
+                                s_face_ready ? "Face module ready" : "Face module failed");
+    ESP_LOGI(TAG, "UI selfcheck result: FINGER begin");
+    events_selfcheck_set_result(EVENTS_SC_FINGER,
+                                s_finger_ready,
+                                s_finger_ready ? "Finger module ready" : "Finger module failed");
+    ESP_LOGI(TAG, "UI selfcheck result: NETWORK begin");
+    events_selfcheck_set_result(EVENTS_SC_NETWORK,
+                                true,
+                                "DHT11 sensor task will start after UI");
 
-    // // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
-    // vTaskDelay(pdMS_TO_TICKS(1)); 
+    ESP_LOGI(TAG, "UI selfcheck finish begin");
+    events_selfcheck_finish();
+    ESP_LOGI(TAG, "UI selfcheck finish done");
 
-    // esp_err_t attendance_err = app_attendance_start();
-    // if (attendance_err != ESP_OK) {
-    //     ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
-    // }
+    // /* 给 taskLVGL 一个调度机会，避免 UI 初始化与 WiFi 启动瞬间叠加 */
+    vTaskDelay(pdMS_TO_TICKS(1)); 
 
-    // events_show_standby();
+    esp_err_t sensor_err = app_sensor_start();
+    s_sensor_ready = (sensor_err == ESP_OK || sensor_err == ESP_ERR_INVALID_STATE);
+    if (sensor_err != ESP_OK && sensor_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG, "DHT11 sensor task start failed: %s", esp_err_to_name(sensor_err));
+    }
 
-    // ESP_ERROR_CHECK(app_network_start());
+    esp_err_t attendance_err = app_attendance_start();
+    if (attendance_err != ESP_OK) {
+        ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
+    }
+
+    events_show_standby();
+
+    ESP_ERROR_CHECK(app_network_start());
     // ESP_ERROR_CHECK(app_perf_monitor_start());
-    // log_system_status("network_started");
+    log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }

@@ -16,19 +16,19 @@ extern "C" {
  * SPI 总线引脚 (LCD 和触摸屏共用)
  ******************************************************************************/
 #define BSP_SPI_HOST        SPI2_HOST
-#define BSP_SPI_MOSI        GPIO_NUM_38
+#define BSP_SPI_MOSI        GPIO_NUM_38      
 #define BSP_SPI_MISO        GPIO_NUM_41
 #define BSP_SPI_CLK         GPIO_NUM_39
 
 /*******************************************************************************
  * LCD 引脚定义 (ILI9488)
  ******************************************************************************/
-// #define BSP_LCD_CS          GPIO_NUM_7
-// #define BSP_LCD_DC          GPIO_NUM_15
-// #define BSP_LCD_RST         GPIO_NUM_18
-#define BSP_LCD_CS          GPIO_NUM_35
-#define BSP_LCD_DC          GPIO_NUM_37
-#define BSP_LCD_RST         GPIO_NUM_36
+#define BSP_LCD_CS          GPIO_NUM_7
+#define BSP_LCD_DC          GPIO_NUM_15
+#define BSP_LCD_RST         GPIO_NUM_18
+// #define BSP_LCD_CS          GPIO_NUM_35
+// #define BSP_LCD_DC          GPIO_NUM_37
+// #define BSP_LCD_RST         GPIO_NUM_36
 #define BSP_LCD_BACKLIGHT   GPIO_NUM_40
 
 /*

@@ -32,6 +32,9 @@ static bool s_standby_load_pending = false;
 static lv_timer_t *s_standby_delay_timer = NULL;
 static char s_standby_time_text[16] = "--:--:--";
 static bool s_standby_wifi_connected = false;
+static bool s_standby_environment_valid = false;
+static char s_standby_temperature_text[24] = "Temp: --.-C";
+static char s_standby_humidity_text[24] = "Humi: --.-%";
 static char s_admin_card_text[48] = {0};
 static char s_confirm_student_id[32] = {0};
 static char s_confirm_card_id[48] = {0};
@@ -67,6 +70,26 @@ static void cancel_standby_delay_timer(void)
 	}
 }
 
+static void apply_standby_environment(void)
+{
+	if (s_ui == NULL) {
+		return;
+	}
+
+	if (s_ui->screen_Standby_label_temperature != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_temperature, s_standby_temperature_text);
+		lv_obj_set_style_text_color(s_ui->screen_Standby_label_temperature,
+			s_standby_environment_valid ? lv_color_hex(0x262626) : lv_color_hex(0x8C8C8C),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_Standby_label_humidity != NULL) {
+		lv_label_set_text(s_ui->screen_Standby_label_humidity, s_standby_humidity_text);
+		lv_obj_set_style_text_color(s_ui->screen_Standby_label_humidity,
+			s_standby_environment_valid ? lv_color_hex(0x262626) : lv_color_hex(0x8C8C8C),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+}
+
 static void load_standby_screen(void)
 {
 	if (s_ui == NULL) {
@@ -97,6 +120,7 @@ static void load_standby_screen(void)
 		lv_label_set_text(s_ui->screen_Standby_label_2,
 			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
 	}
+	apply_standby_environment();
 	log_ui_mem("standby screen_load end");
 	s_standby_load_pending = false;
 }
@@ -353,6 +377,7 @@ static void standby_sync_ui(void *arg)
 		lv_label_set_text(s_ui->screen_Standby_label_2,
 			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
 	}
+	apply_standby_environment();
 }
 
 void events_standby_update_status(const char *time_text, bool wifi_connected)
@@ -362,6 +387,27 @@ void events_standby_update_status(const char *time_text, bool wifi_connected)
 	}
 	s_standby_wifi_connected = wifi_connected;
 	lv_async_call(standby_sync_ui, NULL);
+}
+
+static void standby_environment_sync_ui(void *arg)
+{
+	(void)arg;
+	apply_standby_environment();
+}
+
+void events_standby_update_environment(float temperature, float humidity, bool valid)
+{
+	s_standby_environment_valid = valid;
+	if (valid) {
+		snprintf(s_standby_temperature_text, sizeof(s_standby_temperature_text),
+			"Temp: %.1fC", temperature);
+		snprintf(s_standby_humidity_text, sizeof(s_standby_humidity_text),
+			"Humi: %.1f%%", humidity);
+	} else {
+		strlcpy(s_standby_temperature_text, "Temp: --.-C", sizeof(s_standby_temperature_text));
+		strlcpy(s_standby_humidity_text, "Humi: --.-%", sizeof(s_standby_humidity_text));
+	}
+	lv_async_call(standby_environment_sync_ui, NULL);
 }
 
 void events_show_admin(const char *card_text)

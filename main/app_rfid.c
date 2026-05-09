@@ -14,8 +14,8 @@ static const char *TAG = "app_rfid";
 /* ==================== 硬件配置 ==================== */
 #define RC522_I2C_ADDRESS       (0x28)       // I2C 地址 (部分模块是 0x2A)
 #define RC522_I2C_ADDRESS_ALT   (0x2A)
-#define RC522_I2C_SDA_GPIO      (GPIO_NUM_21) // SDA 引脚
-#define RC522_I2C_SCL_GPIO      (GPIO_NUM_47) // SCL 引脚
+#define RC522_I2C_SDA_GPIO      (GPIO_NUM_20) // SDA 引脚
+#define RC522_I2C_SCL_GPIO      (GPIO_NUM_21) // SCL 引脚
 #define RC522_RST_GPIO          (-1)          // RST 引脚 (-1 为软复位)
 #define RC522_POLL_INTERVAL_MS  (125)         // 轮询间隔 (ms)
 /* ================================================= */

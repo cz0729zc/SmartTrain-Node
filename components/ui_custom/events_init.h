@@ -30,6 +30,7 @@ void events_selfcheck_finish(void);
 
 void events_show_standby(void);
 void events_standby_update_status(const char *time_text, bool wifi_connected);
+void events_standby_update_environment(float temperature, float humidity, bool valid);
 void events_show_admin(const char *card_text);
 void events_show_confirm(const char *student_id, const char *card_id);
 void events_show_unregistered(const char *card_id, const char *reason);

@@ -48,6 +48,9 @@ typedef struct
 	lv_obj_t *screen_Standby_label_2;
 	lv_obj_t *screen_Standby_label_3;
 	lv_obj_t *screen_Standby_img_1;
+	lv_obj_t *screen_Standby_cont_environment;
+	lv_obj_t *screen_Standby_label_temperature;
+	lv_obj_t *screen_Standby_label_humidity;
 	lv_obj_t *screen_Standby_cont_last_result;
 	lv_obj_t *screen_Standby_label_data;
 	lv_obj_t *screen_Standby_label_5;
