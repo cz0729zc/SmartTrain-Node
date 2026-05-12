@@ -317,6 +317,36 @@ static void admin_finger_register_cb(void *user_data)
     }
 }
 
+static void confirm_return_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_confirm_return();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue confirm return failed: %s", esp_err_to_name(ret));
+        events_show_standby();
+    }
+}
+
+static void confirm_face_check_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_verify_face_selected();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue face verify failed: %s", esp_err_to_name(ret));
+        events_show_confirm_status("Face verify failed");
+    }
+}
+
+static void confirm_finger_check_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_verify_fingerprint_selected();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue finger verify failed: %s", esp_err_to_name(ret));
+        events_show_confirm_status("Finger verify failed");
+    }
+}
+
 static void format_time_text(char *out, size_t out_size)
 {
     if (out == NULL || out_size < 9) {
@@ -450,6 +480,9 @@ void app_main(void)
     events_set_admin_return_callback(admin_return_cb, NULL);
     events_set_admin_face_register_callback(admin_face_register_cb, NULL);
     events_set_admin_finger_register_callback(admin_finger_register_cb, NULL);
+    events_set_confirm_return_callback(confirm_return_cb, NULL);
+    events_set_confirm_face_check_callback(confirm_face_check_cb, NULL);
+    events_set_confirm_finger_check_callback(confirm_finger_check_cb, NULL);
     // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
     lvgl_port_unlock();
     // ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));

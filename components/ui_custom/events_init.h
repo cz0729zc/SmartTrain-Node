@@ -37,6 +37,11 @@ void events_show_admin_status(const char *status_text);
 void events_show_face_register(const char *student_id, const char *status_text);
 void events_show_finger_register(const char *student_id, const char *status_text);
 void events_show_confirm(const char *student_id, const char *card_id);
+void events_show_confirm_status(const char *status_text);
+void events_show_success(const char *student_id,
+                         const char *card_id,
+                         const char *check_time,
+                         const char *method);
 
 typedef enum {
 	EVENTS_RETURN_STANDBY = 0,
@@ -55,6 +60,10 @@ void events_set_admin_return_callback(events_admin_return_cb_t callback, void *u
 typedef void (*events_admin_register_cb_t)(void *user_data);
 void events_set_admin_face_register_callback(events_admin_register_cb_t callback, void *user_data);
 void events_set_admin_finger_register_callback(events_admin_register_cb_t callback, void *user_data);
+typedef void (*events_confirm_action_cb_t)(void *user_data);
+void events_set_confirm_return_callback(events_confirm_action_cb_t callback, void *user_data);
+void events_set_confirm_face_check_callback(events_confirm_action_cb_t callback, void *user_data);
+void events_set_confirm_finger_check_callback(events_confirm_action_cb_t callback, void *user_data);
 
 #ifdef __cplusplus
 }

@@ -16,6 +16,9 @@ bool app_attendance_is_card_write_mode(void);
 esp_err_t app_attendance_register_face_selected(void);
 esp_err_t app_attendance_register_fingerprint_selected(void);
 esp_err_t app_attendance_exit_admin_mode(void);
+esp_err_t app_attendance_verify_face_selected(void);
+esp_err_t app_attendance_verify_fingerprint_selected(void);
+esp_err_t app_attendance_confirm_return(void);
 
 #ifdef __cplusplus
 }

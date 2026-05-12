@@ -11,6 +11,7 @@
 #include "app_rfid.h"
 #include "app_time.h"
 #include "app_wifi.h"
+#include "attendance_record.h"
 #include "attendance_profile.h"
 #include "driver_as608.h"
 #include "driver_fm225.h"
@@ -30,6 +31,9 @@ static const char *TAG = "app_attendance";
 #define CARD_WRITE_TARGET_COUNT 3
 #define REGISTER_START_DELAY_MS 2000
 #define REGISTER_RESULT_HOLD_MS 4000
+#define VERIFY_START_DELAY_MS 2000
+#define VERIFY_RESULT_HOLD_MS 4000
+#define VERIFY_TIMEOUT_S 15
 
 typedef enum {
     ATTENDANCE_EVENT_CARD = 0,
@@ -37,6 +41,9 @@ typedef enum {
     ATTENDANCE_EVENT_REGISTER_FACE,
     ATTENDANCE_EVENT_REGISTER_FINGER,
     ATTENDANCE_EVENT_EXIT_ADMIN_MODE,
+    ATTENDANCE_EVENT_VERIFY_FACE,
+    ATTENDANCE_EVENT_VERIFY_FINGER,
+    ATTENDANCE_EVENT_CONFIRM_RETURN,
 } attendance_event_type_t;
 
 typedef struct {
@@ -53,6 +60,9 @@ static attendance_profile_t s_selected_profile = {0};
 static bool s_card_write_mode = false;
 static char s_card_write_done_uids[CARD_WRITE_TARGET_COUNT][ATTENDANCE_UID_MAX_LEN] = {0};
 static size_t s_card_write_done_count = 0;
+static bool s_has_active_check_profile = false;
+static attendance_profile_t s_active_check_profile = {0};
+static char s_active_check_card_uid[ATTENDANCE_UID_MAX_LEN] = {0};
 
 typedef struct {
     const char *uid;
@@ -262,6 +272,9 @@ static void attendance_show_confirm(const attendance_profile_t *profile)
     if (profile == NULL) {
         return;
     }
+    s_active_check_profile = *profile;
+    s_has_active_check_profile = true;
+    strlcpy(s_active_check_card_uid, s_last_card_uid, sizeof(s_active_check_card_uid));
     events_show_confirm(profile->student_id, s_last_card_uid);
 }
 
@@ -414,6 +427,182 @@ static void attendance_finish_registration_delay(void)
 static void attendance_prepare_registration_delay(void)
 {
     vTaskDelay(pdMS_TO_TICKS(REGISTER_START_DELAY_MS));
+}
+
+static void attendance_prepare_verify_delay(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(VERIFY_START_DELAY_MS));
+}
+
+static void attendance_finish_verify_delay(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(VERIFY_RESULT_HOLD_MS));
+    if (s_has_active_check_profile) {
+        events_show_confirm(s_active_check_profile.student_id, s_active_check_card_uid);
+    } else {
+        events_show_standby();
+    }
+}
+
+static void attendance_current_time_text(char *buf, size_t len)
+{
+    if (buf == NULL || len == 0) {
+        return;
+    }
+
+    if (app_time_is_synchronized() && app_time_format_local(buf, len) == ESP_OK) {
+        return;
+    }
+
+    strlcpy(buf, "--:--:--", len);
+}
+
+static void attendance_show_success_and_record(const char *method)
+{
+    char check_time[32] = {0};
+    time_t now = app_time_is_synchronized() ? app_time_now() : 0;
+
+    attendance_current_time_text(check_time, sizeof(check_time));
+
+    esp_err_t rec_ret = attendance_record_append_success(now,
+                                                         check_time,
+                                                         s_active_check_profile.student_id,
+                                                         s_active_check_card_uid,
+                                                         method,
+                                                         s_active_check_profile.face_user_id,
+                                                         s_active_check_profile.finger_page_id);
+    if (rec_ret != ESP_OK) {
+        ESP_LOGE(TAG, "attendance record append failed: %s", esp_err_to_name(rec_ret));
+    }
+
+    events_show_success(s_active_check_profile.student_id,
+                        s_active_check_card_uid,
+                        check_time,
+                        method);
+    s_has_active_check_profile = false;
+}
+
+static void attendance_verify_face_selected(void)
+{
+    if (!s_has_active_check_profile) {
+        ESP_LOGW(TAG, "face verify rejected: no active check profile");
+        events_show_standby();
+        return;
+    }
+
+    if (!s_active_check_profile.has_face_bound) {
+        ESP_LOGW(TAG, "face verify rejected: student_id=%s has no face binding",
+                 s_active_check_profile.student_id);
+        events_show_confirm_status("Face not registered");
+        return;
+    }
+
+    driver_fm225_verify_result_t verify = {0};
+    uint8_t result_code = 0xFF;
+
+    ESP_LOGI(TAG,
+             "face verify begin uid=%s student_id=%s expected_face=%u",
+             s_active_check_card_uid,
+             s_active_check_profile.student_id,
+             (unsigned)s_active_check_profile.face_user_id);
+    events_show_face_register(s_active_check_profile.student_id, "Get ready for face");
+    attendance_prepare_verify_delay();
+    events_show_face_register(s_active_check_profile.student_id, "Face verifying");
+
+    esp_err_t ret = app_face_verify_once(VERIFY_TIMEOUT_S, &verify, &result_code);
+    if (ret == ESP_OK && result_code == DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGI(TAG,
+                 "face verify result user_id=%u name=%s expected=%u",
+                 (unsigned)verify.user_id,
+                 verify.user_name,
+                 (unsigned)s_active_check_profile.face_user_id);
+        if (verify.user_id == s_active_check_profile.face_user_id) {
+            events_show_face_register(s_active_check_profile.student_id, "Face verify OK");
+            attendance_show_success_and_record("face");
+            return;
+        }
+
+        events_show_face_register(s_active_check_profile.student_id, "Not owner");
+        attendance_finish_verify_delay();
+        return;
+    }
+
+    ESP_LOGW(TAG,
+             "face verify failed uid=%s student_id=%s ret=%s result=%u(%s)",
+             s_active_check_card_uid,
+             s_active_check_profile.student_id,
+             esp_err_to_name(ret),
+             (unsigned)result_code,
+             app_face_result_message(result_code));
+    events_show_face_register(s_active_check_profile.student_id,
+                              (ret == ESP_OK) ? app_face_result_message(result_code) : "Face verify failed");
+    attendance_finish_verify_delay();
+}
+
+static void attendance_verify_finger_selected(void)
+{
+    if (!s_has_active_check_profile) {
+        ESP_LOGW(TAG, "finger verify rejected: no active check profile");
+        events_show_standby();
+        return;
+    }
+
+    if (!s_active_check_profile.has_finger_bound) {
+        ESP_LOGW(TAG, "finger verify rejected: student_id=%s has no finger binding",
+                 s_active_check_profile.student_id);
+        events_show_confirm_status("Finger not registered");
+        return;
+    }
+
+    driver_as608_search_result_t result = {0};
+    uint8_t confirm_code = 0xFF;
+
+    ESP_LOGI(TAG,
+             "finger verify begin uid=%s student_id=%s expected_page=%u",
+             s_active_check_card_uid,
+             s_active_check_profile.student_id,
+             (unsigned)s_active_check_profile.finger_page_id);
+    events_show_finger_register(s_active_check_profile.student_id, "Get ready for finger");
+    attendance_prepare_verify_delay();
+    events_show_finger_register(s_active_check_profile.student_id, "Finger verifying");
+
+    esp_err_t ret = app_fingerprint_identify(&result, &confirm_code);
+    if (ret == ESP_OK && confirm_code == DRIVER_AS608_CONFIRM_OK) {
+        ESP_LOGI(TAG,
+                 "finger verify result page=%u score=%u expected=%u",
+                 (unsigned)result.page_id,
+                 (unsigned)result.match_score,
+                 (unsigned)s_active_check_profile.finger_page_id);
+        if (result.page_id == s_active_check_profile.finger_page_id) {
+            events_show_finger_register(s_active_check_profile.student_id, "Finger verify OK");
+            attendance_show_success_and_record("fingerprint");
+            return;
+        }
+
+        events_show_finger_register(s_active_check_profile.student_id, "Not owner");
+        attendance_finish_verify_delay();
+        return;
+    }
+
+    ESP_LOGW(TAG,
+             "finger verify failed uid=%s student_id=%s ret=%s confirm=0x%02X(%s)",
+             s_active_check_card_uid,
+             s_active_check_profile.student_id,
+             esp_err_to_name(ret),
+             (unsigned)confirm_code,
+             app_fingerprint_confirm_message(confirm_code));
+    events_show_finger_register(s_active_check_profile.student_id,
+                                (ret == ESP_OK) ? app_fingerprint_confirm_message(confirm_code) : "Finger verify failed");
+    attendance_finish_verify_delay();
+}
+
+static void attendance_confirm_return(void)
+{
+    ESP_LOGI(TAG, "confirm return to standby");
+    s_has_active_check_profile = false;
+    memset(&s_active_check_profile, 0, sizeof(s_active_check_profile));
+    s_active_check_card_uid[0] = '\0';
+    events_show_standby();
 }
 
 static void attendance_register_face_selected(void)
@@ -655,6 +844,12 @@ static void attendance_task(void *arg)
                 attendance_register_finger_selected();
             } else if (event.type == ATTENDANCE_EVENT_EXIT_ADMIN_MODE) {
                 attendance_exit_admin_mode();
+            } else if (event.type == ATTENDANCE_EVENT_VERIFY_FACE) {
+                attendance_verify_face_selected();
+            } else if (event.type == ATTENDANCE_EVENT_VERIFY_FINGER) {
+                attendance_verify_finger_selected();
+            } else if (event.type == ATTENDANCE_EVENT_CONFIRM_RETURN) {
+                attendance_confirm_return();
             }
         }
     }
@@ -676,6 +871,11 @@ esp_err_t app_attendance_start(void)
         return ret;
     }
     attendance_profile_dump();
+
+    ret = attendance_record_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "attendance record init failed: %s", esp_err_to_name(ret));
+    }
 
     s_event_queue = xQueueCreate(8, sizeof(attendance_event_t));
     if (s_event_queue == NULL) {
@@ -769,4 +969,19 @@ esp_err_t app_attendance_exit_card_write_mode(void)
 esp_err_t app_attendance_exit_admin_mode(void)
 {
     return attendance_send_simple_event(ATTENDANCE_EVENT_EXIT_ADMIN_MODE);
+}
+
+esp_err_t app_attendance_verify_face_selected(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_VERIFY_FACE);
+}
+
+esp_err_t app_attendance_verify_fingerprint_selected(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_VERIFY_FINGER);
+}
+
+esp_err_t app_attendance_confirm_return(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_CONFIRM_RETURN);
 }

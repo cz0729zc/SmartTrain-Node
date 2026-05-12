@@ -2,7 +2,7 @@
 
 > 本文档面向 AI 辅助开发和后续维护。新会话开始时应先阅读本文件，再阅读 `main/app_main()` 调用链和相关组件源码。
 >
-> 最后更新：2026-05-08
+> 最后更新：2026-05-12
 
 ---
 
@@ -19,7 +19,7 @@
 | 触摸 | XPT2046 SPI Touch |
 | 网络 | WiFi STA + MQTT/OneNET |
 | 身份核验 | RFID/IC 卡 + FM225 人脸模块 + AS608 指纹模块 |
-| 本地存储 | NVS |
+| 本地存储 | NVS 保存人员档案映射；`records` SPIFFS 分区保存考勤流水 CSV |
 
 一句话描述：终端用于企业线下培训现场的人员身份核验、考勤记录、环境数据采集和 MQTT 上报，目标业务闭环是“课前发卡/建档 -> 首次注册生物特征 -> 日常刷卡核验 -> 本地记录 -> 云端上报”。
 
@@ -34,21 +34,22 @@
 | 系统入口 | 已接入 | `main/main.c` | 初始化 NVS、LVGL、GUI Guider UI、网络和性能监控 |
 | LVGL 显示 | 已接入 | `main/app_lvgl.c`, `components/bsp/bsp_lcd.c` | ILI9488 + esp_lvgl_port，LVGL 任务固定 Core 1 |
 | GUI Guider UI | 已移植 | `components/ui_custom/` | 包含自检页和 7 个业务页面 |
-| UI 事件 | 部分接入 | `components/ui_custom/events_init.c` | 目前只接入自检页 -> Standby 的跳转 |
+| UI 事件 | 已接入核心闭环 | `components/ui_custom/events_init.c` | 接入自检、Standby、Admin、Unregistered、Confirm、Face/Finger、Success 的页面跳转和按钮桥接 |
 | BSP LCD/Touch | 已接入 | `components/bsp/` | SPI LCD 与 XPT2046 触摸共用 SPI2 |
 | WiFi | 已接入 | `components/app_wifi/` | STA 连接、重试、EventGroup 同步 |
 | MQTT | 已接入 | `components/app_mqtt/`, `main/app_network.c` | 当前上报传感器属性；考勤事件上报待接入 |
 | 时间同步 | 已接入 | `main/app_time.c` | WiFi 后 SNTP 单次对时 |
 | 传感器队列 | 已接入 | `main/sensor_data.c`, `components/common/data_queue.c` | 传感器数据通过队列给网络任务 |
-| DHT11 | 已接入 | `main/app_sensor.c`, `components/drivers/driver_dht.c` | GPIO6，当前 `app_main` 未启动 |
+| DHT11 | 已启动 | `main/app_sensor.c`, `components/drivers/driver_dht.c` | GPIO6，启动后通过队列交给网络任务上报 |
 | CO2 | 已接入 | `main/app_co2.c`, `components/drivers/driver_co2.c` | UART0 GPIO4/5，当前 `app_main` 未启动；启用时需释放 UART0 console |
-| RFID | 驱动完成，业务未接 | `main/app_rfid.c` | 支持 RC522 I2C、读写块、刷卡回调；当前 `app_main` 未启动 |
-| 人脸 | 驱动封装完成，业务未接 | `main/app_face.c`, `components/drivers/driver_fm225.c` | 支持注册和单次识别 |
-| 指纹 | 驱动封装完成，业务未接 | `main/app_fingerprint.c`, `components/drivers/driver_as608.c` | 支持注册、识别、删除、清空 |
-| 学员档案 | 模块完成，业务未初始化 | `main/attendance_profile.c` | NVS 中保存学号、卡标识、人脸 ID、指纹页号映射 |
+| RFID | 已接入状态机 | `main/app_rfid.c`, `main/app_attendance.c` | 支持 RC522 I2C、读写块、刷卡回调；回调只投递业务队列，不直接操作 LVGL |
+| 人脸 | 已接入注册/打卡 | `main/app_face.c`, `components/drivers/driver_fm225.c` | 支持管理员注册、日常单次识别，并与 `attendance_profile` 的 `face_user_id` 匹配 |
+| 指纹 | 已接入注册/打卡 | `main/app_fingerprint.c`, `components/drivers/driver_as608.c` | 支持管理员注册、日常识别，并与 `attendance_profile` 的 `finger_page_id` 匹配 |
+| 学员档案 | 已初始化 | `main/attendance_profile.c` | NVS 中保存学号、卡 UID、人脸 ID、指纹页号映射；启动时预置演示学员 |
+| 考勤流水 | 已接入成功记录 | `main/attendance_record.c` | 挂载 `records` SPIFFS 分区，成功打卡追加 `/records/attendance.csv` |
 | 性能监控 | 已接入 | `main/app_perf_monitor.c` | 输出任务运行时间、CPU 占用、栈水位，关注 WiFi/LVGL/UI |
 
-重要现状：UI 页面和底层能力已经存在，但完整的“刷卡 -> 注册/验证 -> 成功/失败 -> MQTT 考勤事件上报”业务状态机尚未在代码中闭环。
+重要现状：核心本地闭环已经形成：刷卡分流、管理员注册、学员确认、人脸/指纹打卡、成功页展示、本地 CSV 成功流水均已接入。MQTT 目前仍主要上报环境属性，考勤事件云端上报尚未接入。
 
 ---
 
@@ -63,7 +64,9 @@ demo/
 │   ├── app_rfid.c                RFID/RC522 应用封装
 │   ├── app_face.c                FM225 人脸模块应用封装
 │   ├── app_fingerprint.c         AS608 指纹模块应用封装
+│   ├── app_attendance.c          考勤业务状态机，串联刷卡/注册/验证/UI 分流
 │   ├── attendance_profile.c      学员身份映射表，NVS 持久化
+│   ├── attendance_record.c       考勤成功流水，records SPIFFS CSV 持久化
 │   ├── sensor_data.c             传感器队列
 │   └── include/                  应用层头文件
 ├── components/
@@ -99,6 +102,8 @@ main/ 应用层 -> components/ 组件层 -> ESP-IDF/第三方驱动
 app_main()
   ├── nvs_flash_init()
   ├── log_system_status("nvs_inited")
+  ├── RFID/FM225/AS608 自检
+  ├── 可选调试：CLEAR_BIOMETRIC_DB_ON_BOOT 清空 FM225/AS608 模板和本地生物绑定
   ├── app_lvgl_init()
   │   ├── bsp_lcd_init()
   │   │   ├── backlight_init()
@@ -116,9 +121,20 @@ app_main()
   │   │   ├── setup_scr_screen()
   │   │   └── lv_screen_load(自检页)
   │   └── events_init(&guider_ui)
+  ├── events_set_admin_*_callback(...)
+  ├── events_set_confirm_*_callback(...)
   ├── events_selfcheck_set_result(...)
   ├── events_selfcheck_finish()
   │   └── 通过 LVGL timer/async 延迟进入 Standby
+  ├── app_sensor_start()
+  ├── app_attendance_start()
+  │   ├── attendance_profile_init()
+  │   ├── seed_demo_profiles()
+  │   ├── attendance_profile_dump()
+  │   ├── attendance_record_init()
+  │   ├── app_rfid_set_card_callback()
+  │   ├── app_rfid_start()
+  │   └── attendance_task(Core 1)
   ├── app_network_start()
   │   └── network_task(Core 0)
   │       ├── app_wifi_init()
@@ -126,16 +142,16 @@ app_main()
   │       ├── app_time_sync_once()
   │       ├── app_mqtt_start()
   │       └── 循环读取 sensor_queue 并上报属性
-  ├── app_perf_monitor_start()
+  ├── app_perf_monitor_start() 当前按调试需要启停
   └── app_main 返回
 ```
 
-当前被注释或尚未启动的关键业务能力：
+当前启动链路注意事项：
 
-- `attendance_profile_init()` 未在 `app_main()` 调用。
-- `app_rfid_start()` 未启动，`app_rfid_set_card_callback()` 未绑定业务回调。
-- FM225/AS608 自检和初始化代码在 `main.c` 中大段注释。
-- UI 的 Confirm/face/finger/success/unregistered/admin 页面按钮没有业务事件绑定。
+- `main.c` 只保留系统初始化和 UI 回调桥接，具体考勤业务进入 `app_attendance.c`。
+- RFID 回调进入 `app_attendance` 队列，不能在硬件回调里直接调用 LVGL。
+- `attendance_record_init()` 挂载 `records` SPIFFS 分区；若失败，UI 成功页不阻塞，但日志必须报错。
+- `CLEAR_BIOMETRIC_DB_ON_BOOT` 当前是调试开关；正常演示前应确认是否需要关闭，避免每次上电清空已注册模板。
 - MQTT 当前主要上报环境属性，考勤事件上报尚未接入。
 
 ---
@@ -151,14 +167,18 @@ app_main()
 | 确认页 | `screen_Confirm` | 刷卡后显示学号/卡信息，让学员选择人脸或指纹验证 |
 | 人脸页 | `screen_face` | 人脸验证进行中，显示学号和超时提示 |
 | 指纹页 | `screen_finger` | 指纹验证进行中，显示学号和超时提示 |
-| 成功页 | `screen_success` | 打卡成功，显示学号、卡号、时间 |
+| 成功页 | `screen_success` | 打卡成功，显示学号、卡号、打卡时间，8 秒后自动返回 Standby |
 | 未注册/失败页 | `screen_unregistered` | 卡未注册、未绑定、验证失败或非本人 |
 | 管理员页 | `screen_admin` | 管理员/注册流程，选择注册人脸或指纹 |
 
 当前 UI 事件接入情况：
 
 - 已接入：自检页返回按钮、自检结束后延迟进入 Standby。
-- 未接入：Confirm 上的人脸/指纹按钮、各业务页返回按钮、admin 上的人脸/指纹注册按钮。
+- 已接入：Standby 真实时间、WiFi 状态、环境数据显示。
+- 已接入：Admin 返回、写卡模式、人脸注册、指纹注册按钮。
+- 已接入：Unregistered 返回按钮和 3 秒自动返回，支持返回 Standby 或 Admin。
+- 已接入：Confirm 返回、人脸打卡、指纹打卡按钮。
+- 已接入：Success 返回按钮和 8 秒自动返回；页面只展示“Check-in OK”、学号、卡号、打卡时间，不在成功页标题里显示 `face` / `fingerprint`。
 
 ---
 
@@ -320,12 +340,46 @@ screen_admin
 Standby
   └── 学员刷卡且已注册 -> screen_Confirm
       ├── 选择 Face -> screen_face
-      │   ├── 识别成功且 face_user_id 匹配 -> screen_success -> MQTT 上报 -> Standby
+      │   ├── 识别成功且 face_user_id 匹配 -> 追加 /records/attendance.csv -> screen_success -> 8s 后 Standby
       │   └── 失败/超时/不是本人 -> 修改 label_5 -> screen_Confirm
       └── 选择 Finger -> screen_finger
-          ├── 识别成功且 finger_page_id 匹配 -> screen_success -> MQTT 上报 -> Standby
+          ├── 识别成功且 finger_page_id 匹配 -> 追加 /records/attendance.csv -> screen_success -> 8s 后 Standby
           └── 失败/超时/不是本人 -> 修改 label_5 -> screen_Confirm
 ```
+
+打卡成功页说明：
+
+- `screen_success` 显示学号、卡 UID、打卡时间和统一成功标题 `Check-in OK`。
+- 识别方式 `face` / `fingerprint` 不显示在成功页标题中，避免界面信息过杂；该字段仍保留在本地 CSV 和后续 MQTT 事件中，便于追溯统计。
+- 成功页 8 秒后自动返回 Standby；用户点击返回按钮可立即返回 Standby。
+
+### 7.5 本地考勤流水
+
+本地考勤流水不放 NVS。NVS 只保存人员档案和绑定关系，流水记录写入 `partitions.csv` 中预留的 `records` SPIFFS 分区。
+
+| 项目 | 说明 |
+| --- | --- |
+| 挂载点 | `/records` |
+| 分区标签 | `records` |
+| 文件路径 | `/records/attendance.csv` |
+| 写入时机 | 人脸或指纹打卡成功，且返回 ID 与当前卡片档案绑定值匹配 |
+| 当前记录范围 | 只追加成功记录；失败记录暂只打印日志 |
+
+CSV 表头：
+
+```csv
+ts,time,student_id,card_uid,method,result,reason,face_user_id,finger_page_id
+```
+
+运行日志会打印关键状态：
+
+```text
+records SPIFFS mounted total=... used=...
+created attendance record CSV: /records/attendance.csv
+attendance record appended student_id=... card=... method=...
+```
+
+注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
 
 ---
 
@@ -340,7 +394,7 @@ Standby
 5. 终端先本地落地记录，再上传服务器，避免网络波动导致考勤丢失。
 6. 后台生成签到率、迟到早退、课程完成度、考试结果、评价等统计。
 
-你的毕设可以简化为：CSV 名单 + 写卡学号 + 本地 NVS 映射 + MQTT 上报学号。这个闭环对演示足够清楚。
+你的毕设可以简化为：CSV 名单 + 写卡学号 + 本地 NVS 映射 + `records` 分区 CSV 成功流水 + MQTT 上报学号。这个闭环对演示足够清楚。
 
 ---
 
@@ -457,9 +511,9 @@ CONFIG_LV_USE_BUILTIN_SPRINTF=y
 | --- | --- | --- |
 | WiFi/MQTT/network_task | Core 0 | `app_network.c` 固定 Core 0 |
 | LVGL task | Core 1 | `app_lvgl.c` `task_affinity = 1` |
-| UI 业务状态机 | Core 1 或 LVGL async | 待实现 |
-| RFID 扫描 | Core 1 优先 | RC522 内部任务，待业务接入后确认 |
-| 人脸/指纹串口业务 | Core 1 优先 | 当前封装完成，业务未接 |
+| UI 业务状态机 | Core 1 + LVGL lock/async | `app_attendance.c` 固定创建 `attendance_task`，UI 操作经 `events_init.c` 桥接 |
+| RFID 扫描 | Core 1 优先 | RC522 回调投递到 `app_attendance` 队列 |
+| 人脸/指纹串口业务 | Core 1 优先 | 已接入管理员注册和 Confirm 打卡验证 |
 | perf_monitor | Core 1 | 已固定 Core 1 |
 | DHT/CO2 | Core 1 | 任务代码已固定 Core 1，当前未启动；CO2 启用前需释放 UART0 console |
 
@@ -471,28 +525,35 @@ CONFIG_LV_USE_BUILTIN_SPRINTF=y
 
 ---
 
-## 13. 后续业务接入建议
+## 13. 考勤状态机实现边界
 
-建议新增 `main/app_attendance.c` 和 `main/include/app_attendance.h`，作为业务状态机唯一入口。
+当前已经新增 `main/app_attendance.c` 和 `main/include/app_attendance.h`，作为考勤业务状态机唯一入口。
 
 职责：
 
 - 初始化 `attendance_profile`。
+- 预置演示学员档案并通过 `attendance_profile_dump()` 打印 NVS 当前状态。
+- 初始化 `attendance_record`，挂载 `records` SPIFFS 分区。
 - 启动 RFID。
 - 绑定刷卡回调。
 - 管理当前活动学员 `student_id`。
 - 识别管理员卡并切换注册模式。
-- 串联注册、验证、结果页、MQTT 事件。
+- 串联注册、验证、Confirm、Success、Unregistered 页面。
+- 成功打卡后追加 `/records/attendance.csv`。
 - 对 UI 更新统一使用 LVGL lock/async。
 
-建议接口：
+当前主要接口：
 
 ```c
 esp_err_t app_attendance_start(void);
-esp_err_t app_attendance_register_face(const char *student_id);
-esp_err_t app_attendance_register_fingerprint(const char *student_id);
-esp_err_t app_attendance_verify_face(const char *student_id);
-esp_err_t app_attendance_verify_fingerprint(const char *student_id);
+esp_err_t app_attendance_enter_card_write_mode(void);
+esp_err_t app_attendance_exit_card_write_mode(void);
+esp_err_t app_attendance_exit_admin_mode(void);
+esp_err_t app_attendance_register_face_selected(void);
+esp_err_t app_attendance_register_fingerprint_selected(void);
+esp_err_t app_attendance_verify_face_selected(void);
+esp_err_t app_attendance_verify_fingerprint_selected(void);
+esp_err_t app_attendance_confirm_return(void);
 ```
 
 不要把业务状态机继续堆在 `main.c` 或 `components/ui_custom/events_init.c` 里。`events_init.c` 只适合绑定 UI 控件事件，把事件转发给 `app_attendance`。
@@ -517,10 +578,9 @@ esp_err_t app_attendance_verify_fingerprint(const char *student_id);
 ## 15. 已知缺口
 
 - `attendance_profile` 当前字段仍包含 `uid` 和 `name`，与“直接读卡内学号”方案不完全贴合，建议后续重命名或新增 `student_id` 主键模型。
-- UI 业务页面按钮未绑定业务事件。
-- RFID 未在启动链路中启用。
-- 人脸/指纹模块当前主要停留在封装和测试接口，未纳入考勤状态机。
 - 考勤事件 MQTT 上报未实现。
-- 本地考勤流水表尚未实现；当前只有身份映射表。
+- 本地考勤流水当前只记录成功打卡；失败、超时、非本人等审计流水后续可扩展。
+- `/records/attendance.csv` 在设备 SPIFFS 中，若需要电脑端查看，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
+- `CLEAR_BIOMETRIC_DB_ON_BOOT` 是调试开关，正常演示前应确认是否关闭，避免上电清空 FM225/AS608 模板和本地绑定。
 - CO2 已从 UART1 调整到 UART0；启用 CO2 前仍需把 console 从 UART0 切到 USB Serial/JTAG。
 - 高号 GPIO 仍需按实际模组手册复核。

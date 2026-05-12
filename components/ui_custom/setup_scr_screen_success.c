@@ -183,9 +183,9 @@ void setup_scr_screen_success(lv_ui *ui)
 
     //Write codes screen_success_label_7
     ui->screen_success_label_7 = lv_label_create(ui->screen_success);
-    lv_obj_set_pos(ui->screen_success_label_7, 165, 258);
-    lv_obj_set_size(ui->screen_success_label_7, 150, 32);
-    lv_label_set_text(ui->screen_success_label_7, "3s后自动返回主页");
+    lv_obj_set_pos(ui->screen_success_label_7, 140, 258);
+    lv_obj_set_size(ui->screen_success_label_7, 200, 32);
+    lv_label_set_text(ui->screen_success_label_7, "8s后自动返回主页");
     lv_label_set_long_mode(ui->screen_success_label_7, LV_LABEL_LONG_WRAP);
 
     //Write style for screen_success_label_7, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
@@ -225,8 +225,8 @@ void setup_scr_screen_success(lv_ui *ui)
 
     //Write codes screen_success_label_check_time
     ui->screen_success_label_check_time = lv_label_create(ui->screen_success_cont_3);
-    lv_obj_set_pos(ui->screen_success_label_check_time, 54, 67);
-    lv_obj_set_size(ui->screen_success_label_check_time, 100, 32);
+    lv_obj_set_pos(ui->screen_success_label_check_time, 0, 64);
+    lv_obj_set_size(ui->screen_success_label_check_time, 210, 32);
     lv_label_set_text(ui->screen_success_label_check_time, "Time:14:31");
     lv_label_set_long_mode(ui->screen_success_label_check_time, LV_LABEL_LONG_WRAP);
 
