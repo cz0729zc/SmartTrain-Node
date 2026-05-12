@@ -182,6 +182,14 @@ esp_err_t attendance_profile_upsert(const char *uid, const char *student_id, con
         return save_profiles_to_nvs();
     }
 
+    idx = find_index_by_student_id(student_id);
+    if (idx >= 0) {
+        strlcpy(s_profiles[idx].uid, uid, sizeof(s_profiles[idx].uid));
+        strlcpy(s_profiles[idx].name, name, sizeof(s_profiles[idx].name));
+        ESP_LOGI(TAG, "update profile student_id=%s UID=%s", student_id, s_profiles[idx].uid);
+        return save_profiles_to_nvs();
+    }
+
     if (s_profile_count >= PROFILE_MAX_COUNT) {
         ESP_LOGE(TAG, "档案容量已满");
         return ESP_ERR_NO_MEM;
@@ -316,4 +324,27 @@ esp_err_t attendance_profile_bind_finger_page(const char *uid, uint16_t finger_p
 size_t attendance_profile_count(void)
 {
     return s_profile_count;
+}
+
+void attendance_profile_dump(void)
+{
+    if (!s_inited) {
+        ESP_LOGW(TAG, "profile dump skipped: not initialized");
+        return;
+    }
+
+    ESP_LOGI(TAG, "profile table count=%u", (unsigned)s_profile_count);
+    for (size_t i = 0; i < s_profile_count; ++i) {
+        const attendance_profile_t *profile = &s_profiles[i];
+        ESP_LOGI(TAG,
+                 "[%u] uid=%s student_id=%s name=%s face=%s/%u finger=%s/%u",
+                 (unsigned)i,
+                 profile->uid,
+                 profile->student_id,
+                 profile->name,
+                 profile->has_face_bound ? "bound" : "unbound",
+                 (unsigned)profile->face_user_id,
+                 profile->has_finger_bound ? "bound" : "unbound",
+                 (unsigned)profile->finger_page_id);
+    }
 }

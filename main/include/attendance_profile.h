@@ -88,6 +88,11 @@ esp_err_t attendance_profile_bind_finger_page(const char *uid, uint16_t finger_p
  */
 size_t attendance_profile_count(void);
 
+/**
+ * @brief Print the current in-memory/NVS-backed profile table to the serial log.
+ */
+void attendance_profile_dump(void);
+
 #ifdef __cplusplus
 }
 #endif

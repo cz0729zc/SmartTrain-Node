@@ -280,7 +280,26 @@ Standby
       └── 学员卡不在 CSV/名单中 -> screen_unregistered("未知卡片")
 ```
 
-### 7.2 注册状态机
+### 7.2 管理员写卡模式
+
+管理员页右下角提供“写卡模式”按钮。点击后业务状态机进入一次批量写卡会话，后续刷卡不走 Standby 考勤分流，而是按物理 UID 到 NVS 档案表查询对应学号，查到才写入 MIFARE block 4 并读回校验。
+
+```text
+screen_admin
+  └── 点击“写卡模式”
+      └── 进入 card_write_mode
+          ├── 刷管理员卡 -> 不写入，提示跳过
+          ├── 刷未知卡 -> 不写入，提示未知卡片
+          └── 刷 NVS 中存在的学员卡
+              ├── 写入 block 4: student_id
+              ├── 读回 block 4 校验
+              ├── 成功 -> 显示 Write OK n/3
+              └── 三张预置学员卡写完 -> 自动退出 card_write_mode，留在 screen_admin
+```
+
+写卡模式的权威数据源是 NVS 中的 `attendance_profile`。卡内 block 4 只保存学号副本，不能反过来作为写入目标判断依据；这样可以避免旧测试数据（例如 `Hello RC522...`）导致误写或误分流。
+
+### 7.3 注册状态机
 
 ```text
 screen_admin
@@ -295,7 +314,7 @@ screen_admin
               └── 注册失败 -> 修改 label_5 显示失败原因 -> screen_admin
 ```
 
-### 7.3 正常考勤状态机
+### 7.4 正常考勤状态机
 
 ```text
 Standby

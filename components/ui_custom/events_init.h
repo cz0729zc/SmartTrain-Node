@@ -32,8 +32,23 @@ void events_show_standby(void);
 void events_standby_update_status(const char *time_text, bool wifi_connected);
 void events_standby_update_environment(float temperature, float humidity, bool valid);
 void events_show_admin(const char *card_text);
+void events_show_admin_status(const char *status_text);
 void events_show_confirm(const char *student_id, const char *card_id);
+
+typedef enum {
+	EVENTS_RETURN_STANDBY = 0,
+	EVENTS_RETURN_ADMIN,
+} events_return_target_t;
+
 void events_show_unregistered(const char *card_id, const char *reason);
+void events_show_unregistered_ex(const char *card_id,
+                                 const char *reason,
+                                 events_return_target_t return_target);
+
+typedef void (*events_admin_card_write_cb_t)(void *user_data);
+void events_set_admin_card_write_callback(events_admin_card_write_cb_t callback, void *user_data);
+typedef void (*events_admin_return_cb_t)(void *user_data);
+void events_set_admin_return_callback(events_admin_return_cb_t callback, void *user_data);
 
 #ifdef __cplusplus
 }

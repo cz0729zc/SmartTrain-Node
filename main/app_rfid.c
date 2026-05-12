@@ -27,6 +27,7 @@ static rc522_handle_t s_scanner = NULL;
 /* 当前活动的 PICC (卡片) */
 static rc522_picc_t *s_active_picc = NULL;
 static SemaphoreHandle_t s_picc_mutex = NULL;
+static SemaphoreHandle_t s_io_mutex = NULL;
 
 /* 卡片检测回调 */
 static app_rfid_card_cb_t s_card_cb = NULL;
@@ -37,6 +38,20 @@ static const rc522_mifare_key_t s_default_key = {
     .type = RC522_MIFARE_KEY_A,
     .value = { RC522_MIFARE_KEY_VALUE_DEFAULT },
 };
+
+static esp_err_t take_io_mutex(void)
+{
+    if (s_io_mutex == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (xSemaphoreTake(s_io_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "RFID IO mutex timeout");
+        return ESP_ERR_TIMEOUT;
+    }
+
+    return ESP_OK;
+}
 
 static esp_err_t probe_addr_once(i2c_port_t port, uint8_t addr, uint32_t timeout_ms)
 {
@@ -171,6 +186,14 @@ esp_err_t app_rfid_start(void)
         return ESP_ERR_NO_MEM;
     }
 
+    s_io_mutex = xSemaphoreCreateMutex();
+    if (s_io_mutex == NULL) {
+        ESP_LOGE(TAG, "create RFID IO mutex failed");
+        vSemaphoreDelete(s_picc_mutex);
+        s_picc_mutex = NULL;
+        return ESP_ERR_NO_MEM;
+    }
+
     // I2C 驱动配置
     rc522_i2c_config_t driver_config = {
         .port = I2C_NUM_0,
@@ -191,6 +214,8 @@ esp_err_t app_rfid_start(void)
     esp_err_t ret = rc522_i2c_create(&driver_config, &s_driver);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "创建 I2C 驱动失败: %s", esp_err_to_name(ret));
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
         vSemaphoreDelete(s_picc_mutex);
         s_picc_mutex = NULL;
         return ret;
@@ -202,6 +227,8 @@ esp_err_t app_rfid_start(void)
     ret = rc522_driver_install(s_driver);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "安装驱动失败: %s", esp_err_to_name(ret));
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
         vSemaphoreDelete(s_picc_mutex);
         s_picc_mutex = NULL;
         return ret;
@@ -215,6 +242,7 @@ esp_err_t app_rfid_start(void)
         .poll_interval_ms = RC522_POLL_INTERVAL_MS,
         .task_stack_size = 4096,  // RC522 内部任务栈大小
         .task_priority = 5,
+        .task_mutex = s_io_mutex,
     };
 
     // 创建扫描器
@@ -224,6 +252,8 @@ esp_err_t app_rfid_start(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "创建扫描器失败: %s", esp_err_to_name(ret));
         rc522_driver_uninstall(s_driver);
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
         vSemaphoreDelete(s_picc_mutex);
         s_picc_mutex = NULL;
         return ret;
@@ -236,6 +266,8 @@ esp_err_t app_rfid_start(void)
         rc522_destroy(s_scanner);
         s_scanner = NULL;
         rc522_driver_uninstall(s_driver);
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
         vSemaphoreDelete(s_picc_mutex);
         s_picc_mutex = NULL;
         return ret;
@@ -248,6 +280,8 @@ esp_err_t app_rfid_start(void)
         rc522_destroy(s_scanner);
         s_scanner = NULL;
         rc522_driver_uninstall(s_driver);
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
         vSemaphoreDelete(s_picc_mutex);
         s_picc_mutex = NULL;
         return ret;
@@ -280,6 +314,11 @@ esp_err_t app_rfid_stop(void)
         s_picc_mutex = NULL;
     }
 
+    if (s_io_mutex != NULL) {
+        vSemaphoreDelete(s_io_mutex);
+        s_io_mutex = NULL;
+    }
+
     s_active_picc = NULL;
 
     ESP_LOGI(TAG, "RFID 模块已停止");
@@ -305,14 +344,21 @@ esp_err_t app_rfid_read_block(uint8_t block_address, uint8_t *buffer, size_t buf
 
     esp_err_t ret = ESP_FAIL;
 
+    ret = take_io_mutex();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     if (xSemaphoreTake(s_picc_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
         ESP_LOGE(TAG, "获取互斥锁超时");
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_TIMEOUT;
     }
 
     if (s_active_picc == NULL) {
         ESP_LOGW(TAG, "没有活动的卡片");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -320,6 +366,7 @@ esp_err_t app_rfid_read_block(uint8_t block_address, uint8_t *buffer, size_t buf
     if (!rc522_mifare_type_is_classic_compatible(s_active_picc->type)) {
         ESP_LOGW(TAG, "非 MIFARE Classic 卡");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_SUPPORTED;
     }
 
@@ -328,6 +375,7 @@ esp_err_t app_rfid_read_block(uint8_t block_address, uint8_t *buffer, size_t buf
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "认证失败: %s", esp_err_to_name(ret));
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ret;
     }
 
@@ -343,6 +391,7 @@ esp_err_t app_rfid_read_block(uint8_t block_address, uint8_t *buffer, size_t buf
     rc522_mifare_deauth(s_scanner, s_active_picc);
 
     xSemaphoreGive(s_picc_mutex);
+    xSemaphoreGive(s_io_mutex);
     return ret;
 }
 
@@ -370,14 +419,21 @@ esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_
 
     esp_err_t ret = ESP_FAIL;
 
+    ret = take_io_mutex();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     if (xSemaphoreTake(s_picc_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
         ESP_LOGE(TAG, "获取互斥锁超时");
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_TIMEOUT;
     }
 
     if (s_active_picc == NULL) {
         ESP_LOGW(TAG, "没有活动的卡片");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -385,6 +441,7 @@ esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_
     if (!rc522_mifare_type_is_classic_compatible(s_active_picc->type)) {
         ESP_LOGW(TAG, "非 MIFARE Classic 卡");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_SUPPORTED;
     }
 
@@ -393,6 +450,7 @@ esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "认证失败: %s", esp_err_to_name(ret));
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ret;
     }
 
@@ -408,6 +466,7 @@ esp_err_t app_rfid_write_block(uint8_t block_address, const uint8_t *data, size_
     rc522_mifare_deauth(s_scanner, s_active_picc);
 
     xSemaphoreGive(s_picc_mutex);
+    xSemaphoreGive(s_io_mutex);
     return ret;
 }
 
@@ -436,20 +495,28 @@ esp_err_t app_rfid_read_write_verify(uint8_t block_address, const uint8_t *write
 
     esp_err_t ret = ESP_FAIL;
 
+    ret = take_io_mutex();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     if (xSemaphoreTake(s_picc_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
         ESP_LOGE(TAG, "获取互斥锁超时");
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_TIMEOUT;
     }
 
     if (s_active_picc == NULL) {
         ESP_LOGW(TAG, "没有活动的卡片");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_FOUND;
     }
 
     if (!rc522_mifare_type_is_classic_compatible(s_active_picc->type)) {
         ESP_LOGW(TAG, "非 MIFARE Classic 卡");
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ESP_ERR_NOT_SUPPORTED;
     }
 
@@ -458,6 +525,7 @@ esp_err_t app_rfid_read_write_verify(uint8_t block_address, const uint8_t *write
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "认证失败: %s", esp_err_to_name(ret));
         xSemaphoreGive(s_picc_mutex);
+        xSemaphoreGive(s_io_mutex);
         return ret;
     }
 
@@ -492,5 +560,6 @@ esp_err_t app_rfid_read_write_verify(uint8_t block_address, const uint8_t *write
 cleanup:
     rc522_mifare_deauth(s_scanner, s_active_picc);
     xSemaphoreGive(s_picc_mutex);
+    xSemaphoreGive(s_io_mutex);
     return ret;
 }

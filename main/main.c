@@ -45,7 +45,7 @@ static const char *TAG = "main";
 #define FM225_UART_BAUD     115200
 
 /* 管理员卡 UID（按实际管理员卡 UID 修改） */
-#define ADMIN_CARD_UID      "04:11:22:33:44"
+#define ADMIN_CARD_UID      "16:CE:D0:AA"
 
 static bool s_rfid_ready = false;
 
@@ -196,6 +196,22 @@ static void ui_async_show_admin(void *arg)
     lv_screen_load(guider_ui.screen_admin);
 }
 
+static void admin_card_write_mode_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_enter_card_write_mode();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "enter card write mode failed: %s", esp_err_to_name(ret));
+        events_show_admin_status("Write mode failed");
+    }
+}
+
+static void admin_return_cb(void *user_data)
+{
+    (void)user_data;
+    (void)app_attendance_exit_card_write_mode();
+    events_show_standby();
+}
 
 static void format_time_text(char *out, size_t out_size)
 {
@@ -332,6 +348,8 @@ void app_main(void)
     setup_ui(&guider_ui);
     // ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
     events_init(&guider_ui);
+    events_set_admin_card_write_callback(admin_card_write_mode_cb, NULL);
+    events_set_admin_return_callback(admin_return_cb, NULL);
     // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
     lvgl_port_unlock();
     // ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));

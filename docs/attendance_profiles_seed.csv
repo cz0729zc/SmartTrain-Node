@@ -1,0 +1,5 @@
+role,uid,student_id,name,note
+admin,16:CE:D0:AA,,,Administrator card; enters screen_admin
+student,26:32:BE:AA,202401001,Student 001,Seeded into NVS by app_attendance_start
+student,DB:75:BD:B7,202401002,Student 002,Seeded into NVS by app_attendance_start
+student,CB:1D:3B:B7,202401003,Student 003,Seeded into NVS by app_attendance_start

@@ -36,17 +36,28 @@ static bool s_standby_environment_valid = false;
 static char s_standby_temperature_text[24] = "Temp: --.-C";
 static char s_standby_humidity_text[24] = "Humi: --.-%";
 static char s_admin_card_text[48] = {0};
+static char s_admin_status_text[64] = "Admin mode";
 static char s_confirm_student_id[32] = {0};
 static char s_confirm_card_id[48] = {0};
 static char s_unregistered_card_id[48] = {0};
 static char s_unregistered_reason[48] = {0};
+static events_return_target_t s_unregistered_return_target = EVENTS_RETURN_STANDBY;
+static lv_timer_t *s_unregistered_return_timer = NULL;
+static lv_obj_t *s_admin_card_write_btn = NULL;
+static events_admin_card_write_cb_t s_admin_card_write_cb = NULL;
+static void *s_admin_card_write_user_data = NULL;
+static events_admin_return_cb_t s_admin_return_cb = NULL;
+static void *s_admin_return_user_data = NULL;
 static const char *TAG = "events_init";
 
 #define SELFCHECK_STANDBY_DELAY_MS 5000
 #define EVENTS_LVGL_LOCK_TIMEOUT_MS 1000
+#define UNREGISTERED_AUTO_RETURN_MS 3000
 
 static void selfcheck_finish_cb(void *arg);
 static void request_standby_screen_load(void);
+static void load_admin_screen(void);
+static void apply_unregistered_status(void);
 
 static void log_ui_mem(const char *stage)
 {
@@ -68,6 +79,25 @@ static void cancel_standby_delay_timer(void)
 	if (s_standby_delay_timer != NULL) {
 		lv_timer_del(s_standby_delay_timer);
 		s_standby_delay_timer = NULL;
+	}
+}
+
+static void cancel_unregistered_return_timer(void)
+{
+	if (s_unregistered_return_timer != NULL) {
+		lv_timer_del(s_unregistered_return_timer);
+		s_unregistered_return_timer = NULL;
+	}
+}
+
+static const char *unregistered_return_target_name(events_return_target_t target)
+{
+	switch (target) {
+		case EVENTS_RETURN_ADMIN:
+			return "admin";
+		case EVENTS_RETURN_STANDBY:
+		default:
+			return "standby";
 	}
 }
 
@@ -98,6 +128,7 @@ static void load_standby_screen(void)
 		return;
 	}
 
+	cancel_unregistered_return_timer();
 	log_ui_mem("standby load begin");
 
 	if (s_ui->screen_Standby_del) {
@@ -153,6 +184,25 @@ static void standby_delay_timer_cb(lv_timer_t *timer)
 	s_standby_delay_timer = NULL;
 
 	request_standby_screen_load();
+}
+
+static void return_from_unregistered(void)
+{
+	cancel_unregistered_return_timer();
+
+	if (s_unregistered_return_target == EVENTS_RETURN_ADMIN) {
+		load_admin_screen();
+	} else {
+		request_standby_screen_load();
+	}
+}
+
+static void unregistered_return_timer_cb(lv_timer_t *timer)
+{
+	(void)timer;
+	s_unregistered_return_timer = NULL;
+	ESP_LOGI(TAG, "unregistered auto return after 3s");
+	return_from_unregistered();
 }
 
 static void set_module_status(lv_obj_t *label, bool ok)
@@ -301,6 +351,86 @@ static void selfcheck_screen_press_dbg_cb(lv_event_t *e)
 	log_touch_point_from_event("Selfcheck 屏幕按下", e);
 }
 
+static void admin_card_write_btn_cb(lv_event_t *e)
+{
+	(void)e;
+	if (s_admin_card_write_cb != NULL) {
+		s_admin_card_write_cb(s_admin_card_write_user_data);
+	}
+}
+
+static void admin_return_btn_cb(lv_event_t *e)
+{
+	(void)e;
+	if (s_admin_return_cb != NULL) {
+		s_admin_return_cb(s_admin_return_user_data);
+	}
+}
+
+static void unregistered_return_btn_cb(lv_event_t *e)
+{
+	(void)e;
+	ESP_LOGI(TAG, "unregistered return clicked");
+	return_from_unregistered();
+}
+
+static void ensure_admin_card_write_button(void)
+{
+	if (s_ui == NULL || s_ui->screen_admin_control_bar == NULL) {
+		return;
+	}
+
+	if (s_admin_card_write_btn != NULL) {
+		return;
+	}
+
+	s_admin_card_write_btn = lv_button_create(s_ui->screen_admin_control_bar);
+	lv_obj_set_pos(s_admin_card_write_btn, 350, 0);
+	lv_obj_set_size(s_admin_card_write_btn, 100, 30);
+	lv_obj_clear_flag(s_admin_card_write_btn, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_event_cb(s_admin_card_write_btn, admin_card_write_btn_cb, LV_EVENT_CLICKED, NULL);
+	lv_obj_set_style_bg_opa(s_admin_card_write_btn, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_color(s_admin_card_write_btn, lv_color_hex(0x1677FF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_border_width(s_admin_card_write_btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_radius(s_admin_card_write_btn, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_shadow_width(s_admin_card_write_btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	lv_obj_t *label = lv_label_create(s_admin_card_write_btn);
+	lv_label_set_text(label, "写卡模式");
+	lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+	lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_text_font(label, &lv_font_SourceHanSerifSC_Regular_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_center(label);
+}
+
+static void load_admin_screen(void)
+{
+	if (s_ui == NULL) {
+		return;
+	}
+
+	cancel_unregistered_return_timer();
+
+	if (s_ui->screen_admin_del) {
+		setup_scr_screen_admin(s_ui);
+		s_ui->screen_admin_del = false;
+		s_admin_card_write_btn = NULL;
+		if (s_ui->screen_admin_btn_return != NULL) {
+			lv_obj_add_event_cb(s_ui->screen_admin_btn_return, admin_return_btn_cb, LV_EVENT_CLICKED, NULL);
+		}
+	}
+	ensure_admin_card_write_button();
+	if (s_ui->screen_admin_label_9 != NULL) {
+		char buf[64];
+		snprintf(buf, sizeof(buf), "瀛﹀憳:%s", s_admin_card_text);
+		lv_label_set_text(s_ui->screen_admin_label_9, buf);
+	}
+	if (s_ui->screen_admin_label_5 != NULL) {
+		lv_label_set_text(s_ui->screen_admin_label_5, s_admin_status_text);
+	}
+	lv_screen_load(s_ui->screen_admin);
+}
+
 void events_init(lv_ui *ui)
 {
 	s_ui = ui;
@@ -329,6 +459,18 @@ void events_init(lv_ui *ui)
 	if (s_ui->screen != NULL) {
 		lv_obj_add_event_cb(s_ui->screen, selfcheck_screen_press_dbg_cb, LV_EVENT_PRESSED, NULL);
 	}
+}
+
+void events_set_admin_card_write_callback(events_admin_card_write_cb_t callback, void *user_data)
+{
+	s_admin_card_write_cb = callback;
+	s_admin_card_write_user_data = user_data;
+}
+
+void events_set_admin_return_callback(events_admin_return_cb_t callback, void *user_data)
+{
+	s_admin_return_cb = callback;
+	s_admin_return_user_data = user_data;
 }
 
 void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text)
@@ -360,6 +502,29 @@ void events_show_standby(void)
 	request_standby_screen_load();
 }
 
+static void apply_unregistered_status(void)
+{
+	if (s_ui == NULL || s_ui->screen_unregistered_del) {
+		return;
+	}
+
+	if (s_ui->screen_unregistered_label_time != NULL) {
+		lv_label_set_text(s_ui->screen_unregistered_label_time, s_standby_time_text);
+	}
+	if (s_ui->screen_unregistered_label_26 != NULL) {
+		lv_obj_set_style_text_color(s_ui->screen_unregistered_label_26,
+			s_standby_wifi_connected ? lv_color_hex(0x52C41A) : lv_color_hex(0xBFBFBF),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_unregistered_label_25 != NULL) {
+		lv_label_set_text(s_ui->screen_unregistered_label_25,
+			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
+		lv_obj_set_style_text_color(s_ui->screen_unregistered_label_25,
+			s_standby_wifi_connected ? lv_color_hex(0x1890FF) : lv_color_hex(0x8C8C8C),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+}
+
 static void standby_sync_ui(void *arg)
 {
 	(void)arg;
@@ -379,6 +544,7 @@ static void standby_sync_ui(void *arg)
 			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
 	}
 	apply_standby_environment();
+	apply_unregistered_status();
 }
 
 void events_standby_update_status(const char *time_text, bool wifi_connected)
@@ -420,17 +586,28 @@ void events_show_admin(const char *card_text)
 		return;
 	}
 	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
-		if (s_ui->screen_admin_del) {
-			setup_scr_screen_admin(s_ui);
-			s_ui->screen_admin_del = false;
-		}
-		if (s_ui->screen_admin_label_9 != NULL) {
-			char buf[64];
-			snprintf(buf, sizeof(buf), "学员:%s", s_admin_card_text);
-			lv_label_set_text(s_ui->screen_admin_label_9, buf);
-		}
-		lv_screen_load(s_ui->screen_admin);
+		load_admin_screen();
 		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "show admin skipped, LVGL lock timeout");
+	}
+}
+
+void events_show_admin_status(const char *status_text)
+{
+	if (status_text != NULL && status_text[0] != '\0') {
+		strlcpy(s_admin_status_text, status_text, sizeof(s_admin_status_text));
+	}
+
+	if (s_ui == NULL) {
+		return;
+	}
+
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
+		load_admin_screen();
+		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "show admin status skipped, LVGL lock timeout");
 	}
 }
 
@@ -446,6 +623,7 @@ void events_show_confirm(const char *student_id, const char *card_id)
 		return;
 	}
 	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
+		cancel_unregistered_return_timer();
 		if (s_ui->screen_Confirm_del) {
 			setup_scr_screen_Confirm(s_ui);
 			s_ui->screen_Confirm_del = false;
@@ -465,7 +643,9 @@ void events_show_confirm(const char *student_id, const char *card_id)
 	}
 }
 
-void events_show_unregistered(const char *card_id, const char *reason)
+void events_show_unregistered_ex(const char *card_id,
+                                 const char *reason,
+                                 events_return_target_t return_target)
 {
 	if (card_id != NULL) {
 		strlcpy(s_unregistered_card_id, card_id, sizeof(s_unregistered_card_id));
@@ -473,14 +653,28 @@ void events_show_unregistered(const char *card_id, const char *reason)
 	if (reason != NULL) {
 		strlcpy(s_unregistered_reason, reason, sizeof(s_unregistered_reason));
 	}
+	s_unregistered_return_target = return_target;
+	ESP_LOGI(TAG,
+		"show unregistered card=%s reason=%s return_target=%s",
+		s_unregistered_card_id,
+		s_unregistered_reason,
+		unregistered_return_target_name(s_unregistered_return_target));
 	if (s_ui == NULL) {
 		return;
 	}
 	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
+		cancel_unregistered_return_timer();
 		if (s_ui->screen_unregistered_del) {
 			setup_scr_screen_unregistered(s_ui);
 			s_ui->screen_unregistered_del = false;
+			if (s_ui->screen_unregistered_btn_return != NULL) {
+				lv_obj_add_event_cb(s_ui->screen_unregistered_btn_return,
+					unregistered_return_btn_cb,
+					LV_EVENT_CLICKED,
+					NULL);
+			}
 		}
+		apply_unregistered_status();
 		if (s_ui->screen_unregistered_label_Card != NULL) {
 			char buf[64];
 			snprintf(buf, sizeof(buf), "Card:%s", s_unregistered_card_id);
@@ -491,6 +685,21 @@ void events_show_unregistered(const char *card_id, const char *reason)
 				s_unregistered_reason[0] ? s_unregistered_reason : "未知卡片");
 		}
 		lv_screen_load(s_ui->screen_unregistered);
+		s_unregistered_return_timer = lv_timer_create(unregistered_return_timer_cb,
+			UNREGISTERED_AUTO_RETURN_MS,
+			NULL);
+		if (s_unregistered_return_timer == NULL) {
+			ESP_LOGW(TAG, "unregistered return timer create failed");
+		} else {
+			lv_timer_set_repeat_count(s_unregistered_return_timer, 1);
+		}
 		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "show unregistered skipped, LVGL lock timeout");
 	}
+}
+
+void events_show_unregistered(const char *card_id, const char *reason)
+{
+	events_show_unregistered_ex(card_id, reason, EVENTS_RETURN_STANDBY);
 }
