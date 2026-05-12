@@ -1,14 +1,19 @@
 #include "app_attendance.h"
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
+#include "app_face.h"
+#include "app_fingerprint.h"
 #include "app_rfid.h"
 #include "app_time.h"
 #include "app_wifi.h"
 #include "attendance_profile.h"
+#include "driver_as608.h"
+#include "driver_fm225.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -27,6 +32,9 @@ static const char *TAG = "app_attendance";
 typedef enum {
     ATTENDANCE_EVENT_CARD = 0,
     ATTENDANCE_EVENT_ENTER_CARD_WRITE_MODE,
+    ATTENDANCE_EVENT_REGISTER_FACE,
+    ATTENDANCE_EVENT_REGISTER_FINGER,
+    ATTENDANCE_EVENT_EXIT_ADMIN_MODE,
 } attendance_event_type_t;
 
 typedef struct {
@@ -37,6 +45,9 @@ typedef struct {
 static QueueHandle_t s_event_queue = NULL;
 static TaskHandle_t s_task_handle = NULL;
 static char s_last_card_uid[ATTENDANCE_UID_MAX_LEN] = {0};
+static bool s_admin_mode = false;
+static bool s_has_selected_profile = false;
+static attendance_profile_t s_selected_profile = {0};
 static bool s_card_write_mode = false;
 static char s_card_write_done_uids[CARD_WRITE_TARGET_COUNT][ATTENDANCE_UID_MAX_LEN] = {0};
 static size_t s_card_write_done_count = 0;
@@ -188,9 +199,50 @@ static esp_err_t write_card_student_id(const char *student_id)
     return ESP_OK;
 }
 
+static esp_err_t finger_page_from_student_id(const char *student_id, uint16_t *page_id)
+{
+    if (student_id == NULL || page_id == NULL || student_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint32_t value = 0;
+    uint32_t multiplier = 1;
+    uint32_t digits = 0;
+    bool has_digit = false;
+
+    for (int i = (int)strlen(student_id) - 1; i >= 0 && digits < 3; --i) {
+        if (!isdigit((unsigned char)student_id[i])) {
+            break;
+        }
+        has_digit = true;
+        value += (uint32_t)(student_id[i] - '0') * multiplier;
+        multiplier *= 10U;
+        digits++;
+    }
+
+    if (!has_digit || value == 0 || value > 99U || value > UINT16_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *page_id = (uint16_t)value;
+    return ESP_OK;
+}
+
 static void attendance_show_admin(void)
 {
     events_show_admin(s_last_card_uid[0] != '\0' ? s_last_card_uid : "admin");
+}
+
+static void attendance_show_selected_admin(void)
+{
+    if (!s_has_selected_profile) {
+        attendance_show_admin();
+        return;
+    }
+
+    events_show_admin_student(s_selected_profile.student_id,
+                              s_selected_profile.uid,
+                              "Ready: Face/Finger");
 }
 
 static void attendance_show_unregistered(const char *reason)
@@ -218,6 +270,17 @@ static void attendance_enter_card_write_mode(void)
     memset(s_card_write_done_uids, 0, sizeof(s_card_write_done_uids));
     ESP_LOGI(TAG, "card write mode enabled");
     events_show_admin_status("Card write mode: swipe student cards");
+}
+
+static void attendance_exit_admin_mode(void)
+{
+    ESP_LOGI(TAG, "exit admin mode");
+    s_admin_mode = false;
+    s_has_selected_profile = false;
+    memset(&s_selected_profile, 0, sizeof(s_selected_profile));
+    s_card_write_mode = false;
+    s_card_write_done_count = 0;
+    memset(s_card_write_done_uids, 0, sizeof(s_card_write_done_uids));
 }
 
 static bool card_write_uid_already_done(const char *uid)
@@ -306,6 +369,167 @@ static void attendance_handle_card_write(const char *uid)
     events_show_admin_status(status);
 }
 
+static void attendance_handle_admin_card(const char *uid)
+{
+    attendance_profile_t profile = {0};
+
+    if (uid == NULL || uid[0] == '\0') {
+        return;
+    }
+
+    strlcpy(s_last_card_uid, uid, sizeof(s_last_card_uid));
+    ESP_LOGI(TAG, "admin mode scanned uid=%s", uid);
+
+    if (strcmp(uid, ADMIN_CARD_UID) == 0) {
+        events_show_admin_status("Admin card OK");
+        return;
+    }
+
+    esp_err_t ret = attendance_profile_find_by_uid(uid, &profile);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "admin mode unknown uid=%s: %s", uid, esp_err_to_name(ret));
+        s_has_selected_profile = false;
+        memset(&s_selected_profile, 0, sizeof(s_selected_profile));
+        attendance_show_admin_unregistered("Unknown card");
+        return;
+    }
+
+    s_selected_profile = profile;
+    s_has_selected_profile = true;
+    ESP_LOGI(TAG,
+             "admin selected uid=%s student_id=%s",
+             profile.uid,
+             profile.student_id);
+    attendance_show_selected_admin();
+}
+
+static void attendance_finish_registration_delay(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(1200));
+    attendance_show_selected_admin();
+}
+
+static void attendance_register_face_selected(void)
+{
+    if (s_card_write_mode) {
+        ESP_LOGW(TAG, "face register rejected: card write mode active");
+        events_show_admin_status("Exit write mode first");
+        return;
+    }
+
+    if (!s_has_selected_profile) {
+        ESP_LOGW(TAG, "face register rejected: no selected student");
+        events_show_admin_status("请刷学员卡");
+        return;
+    }
+
+    uint16_t face_user_id = ATTENDANCE_FACE_ID_UNBOUND;
+    uint8_t result_code = 0xFF;
+
+    ESP_LOGI(TAG,
+             "face register begin uid=%s student_id=%s",
+             s_selected_profile.uid,
+             s_selected_profile.student_id);
+    events_show_face_register(s_selected_profile.student_id, "Face enrolling");
+
+    esp_err_t ret = app_face_enroll_single(s_selected_profile.student_id,
+                                           false,
+                                           15,
+                                           &face_user_id,
+                                           &result_code);
+    if (ret == ESP_OK && result_code == DRIVER_FM225_RESULT_SUCCESS) {
+        ret = attendance_profile_bind_face_id(s_selected_profile.uid, face_user_id);
+        if (ret == ESP_OK) {
+            s_selected_profile.face_user_id = face_user_id;
+            s_selected_profile.has_face_bound = true;
+            ESP_LOGI(TAG,
+                     "face register success uid=%s student_id=%s face_user_id=%u",
+                     s_selected_profile.uid,
+                     s_selected_profile.student_id,
+                     (unsigned)face_user_id);
+            events_show_face_register(s_selected_profile.student_id, "Face enroll OK");
+            attendance_profile_dump();
+            attendance_finish_registration_delay();
+            return;
+        }
+    }
+
+    ESP_LOGW(TAG,
+             "face register failed uid=%s student_id=%s ret=%s result=%u(%s)",
+             s_selected_profile.uid,
+             s_selected_profile.student_id,
+             esp_err_to_name(ret),
+             (unsigned)result_code,
+             app_face_result_message(result_code));
+    events_show_face_register(s_selected_profile.student_id,
+                              (ret == ESP_OK) ? app_face_result_message(result_code) : "Face enroll failed");
+    attendance_finish_registration_delay();
+}
+
+static void attendance_register_finger_selected(void)
+{
+    if (s_card_write_mode) {
+        ESP_LOGW(TAG, "finger register rejected: card write mode active");
+        events_show_admin_status("Exit write mode first");
+        return;
+    }
+
+    if (!s_has_selected_profile) {
+        ESP_LOGW(TAG, "finger register rejected: no selected student");
+        events_show_admin_status("请刷学员卡");
+        return;
+    }
+
+    uint16_t page_id = ATTENDANCE_FINGER_ID_UNBOUND;
+    uint8_t confirm_code = 0xFF;
+    esp_err_t ret = finger_page_from_student_id(s_selected_profile.student_id, &page_id);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG,
+                 "finger page invalid student_id=%s: %s",
+                 s_selected_profile.student_id,
+                 esp_err_to_name(ret));
+        events_show_admin_status("Finger page invalid");
+        return;
+    }
+
+    ESP_LOGI(TAG,
+             "finger register begin uid=%s student_id=%s page=%u",
+             s_selected_profile.uid,
+             s_selected_profile.student_id,
+             (unsigned)page_id);
+    events_show_finger_register(s_selected_profile.student_id, "Press same finger twice");
+
+    ret = app_fingerprint_enroll(page_id, &confirm_code);
+    if (ret == ESP_OK && confirm_code == DRIVER_AS608_CONFIRM_OK) {
+        ret = attendance_profile_bind_finger_page(s_selected_profile.uid, page_id);
+        if (ret == ESP_OK) {
+            s_selected_profile.finger_page_id = page_id;
+            s_selected_profile.has_finger_bound = true;
+            ESP_LOGI(TAG,
+                     "finger register success uid=%s student_id=%s page=%u",
+                     s_selected_profile.uid,
+                     s_selected_profile.student_id,
+                     (unsigned)page_id);
+            events_show_finger_register(s_selected_profile.student_id, "Finger enroll OK");
+            attendance_profile_dump();
+            attendance_finish_registration_delay();
+            return;
+        }
+    }
+
+    ESP_LOGW(TAG,
+             "finger register failed uid=%s student_id=%s page=%u ret=%s confirm=0x%02X(%s)",
+             s_selected_profile.uid,
+             s_selected_profile.student_id,
+             (unsigned)page_id,
+             esp_err_to_name(ret),
+             (unsigned)confirm_code,
+             app_fingerprint_confirm_message(confirm_code));
+    events_show_finger_register(s_selected_profile.student_id,
+                                (ret == ESP_OK) ? app_fingerprint_confirm_message(confirm_code) : "Finger enroll failed");
+    attendance_finish_registration_delay();
+}
+
 static void attendance_handle_card(const char *uid)
 {
     attendance_profile_t profile = {0};
@@ -326,7 +550,15 @@ static void attendance_handle_card(const char *uid)
 
     if (strcmp(uid, ADMIN_CARD_UID) == 0) {
         ESP_LOGI(TAG, "route card uid=%s -> admin", uid);
+        s_admin_mode = true;
+        s_has_selected_profile = false;
+        memset(&s_selected_profile, 0, sizeof(s_selected_profile));
         attendance_show_admin();
+        return;
+    }
+
+    if (s_admin_mode) {
+        attendance_handle_admin_card(uid);
         return;
     }
 
@@ -406,6 +638,12 @@ static void attendance_task(void *arg)
                 attendance_handle_card(event.uid);
             } else if (event.type == ATTENDANCE_EVENT_ENTER_CARD_WRITE_MODE) {
                 attendance_enter_card_write_mode();
+            } else if (event.type == ATTENDANCE_EVENT_REGISTER_FACE) {
+                attendance_register_face_selected();
+            } else if (event.type == ATTENDANCE_EVENT_REGISTER_FINGER) {
+                attendance_register_finger_selected();
+            } else if (event.type == ATTENDANCE_EVENT_EXIT_ADMIN_MODE) {
+                attendance_exit_admin_mode();
             }
         }
     }
@@ -482,10 +720,42 @@ bool app_attendance_is_card_write_mode(void)
     return s_card_write_mode;
 }
 
+static esp_err_t attendance_send_simple_event(attendance_event_type_t type)
+{
+    if (s_event_queue == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    attendance_event_t event = {
+        .type = type,
+    };
+
+    if (xQueueSend(s_event_queue, &event, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t app_attendance_register_face_selected(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_REGISTER_FACE);
+}
+
+esp_err_t app_attendance_register_fingerprint_selected(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_REGISTER_FINGER);
+}
+
 esp_err_t app_attendance_exit_card_write_mode(void)
 {
     s_card_write_mode = false;
     s_card_write_done_count = 0;
     memset(s_card_write_done_uids, 0, sizeof(s_card_write_done_uids));
     return ESP_OK;
+}
+
+esp_err_t app_attendance_exit_admin_mode(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_EXIT_ADMIN_MODE);
 }

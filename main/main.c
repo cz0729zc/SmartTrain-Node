@@ -209,8 +209,28 @@ static void admin_card_write_mode_cb(void *user_data)
 static void admin_return_cb(void *user_data)
 {
     (void)user_data;
-    (void)app_attendance_exit_card_write_mode();
+    (void)app_attendance_exit_admin_mode();
     events_show_standby();
+}
+
+static void admin_face_register_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_register_face_selected();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue face register failed: %s", esp_err_to_name(ret));
+        events_show_admin_status("Face register failed");
+    }
+}
+
+static void admin_finger_register_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_register_fingerprint_selected();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue finger register failed: %s", esp_err_to_name(ret));
+        events_show_admin_status("Finger register failed");
+    }
 }
 
 static void format_time_text(char *out, size_t out_size)
@@ -291,44 +311,44 @@ void app_main(void)
         ESP_LOGW(TAG, "RFID 模块自检失败");
     }
 
-    // ESP_LOGI(TAG, "开始自检人脸模块...");
-    // app_face_config_t face_cfg = {
-    //     .uart_num = FM225_UART_NUM,
-    //     .tx_gpio = FM225_UART_TX_GPIO,
-    //     .rx_gpio = FM225_UART_RX_GPIO,
-    //     .baud_rate = FM225_UART_BAUD,
-    //     .cmd_timeout_ms = 3000,
-    // };
-    // if (app_face_init(&face_cfg) == ESP_OK && app_face_wait_ready(1000) == ESP_OK) {
-    //     s_face_ready = true;
-    //     ESP_LOGI(TAG, "人脸模块自检通过");
-    // } else {
-    //     s_face_ready = false;
-    //     ESP_LOGW(TAG, "人脸模块自检失败");
-    // }
+    ESP_LOGI(TAG, "开始自检人脸模块...");
+    app_face_config_t face_cfg = {
+        .uart_num = FM225_UART_NUM,
+        .tx_gpio = FM225_UART_TX_GPIO,
+        .rx_gpio = FM225_UART_RX_GPIO,
+        .baud_rate = FM225_UART_BAUD,
+        .cmd_timeout_ms = 3000,
+    };
+    if (app_face_init(&face_cfg) == ESP_OK && app_face_wait_ready(1000) == ESP_OK) {
+        s_face_ready = true;
+        ESP_LOGI(TAG, "人脸模块自检通过");
+    } else {
+        s_face_ready = false;
+        ESP_LOGW(TAG, "人脸模块自检失败");
+    }
 
-    // ESP_LOGI(TAG, "开始自检指纹模块...");
-    // uint8_t finger_confirm = 0xFF;
-    // driver_as608_sys_para_t finger_para = {0};
-    // if (app_fingerprint_init() == ESP_OK
-    //     && app_fingerprint_get_sys_para(&finger_para, &finger_confirm) == ESP_OK
-    //     && finger_confirm == DRIVER_AS608_CONFIRM_OK) {
-    //     s_finger_ready = true;
-    //     ESP_LOGI(TAG, "指纹模块自检通过");
-    // } else {
-    //     s_finger_ready = false;
-    //     ESP_LOGW(TAG, "指纹模块自检失败");
-    // }
+    ESP_LOGI(TAG, "开始自检指纹模块...");
+    uint8_t finger_confirm = 0xFF;
+    driver_as608_sys_para_t finger_para = {0};
+    if (app_fingerprint_init() == ESP_OK
+        && app_fingerprint_get_sys_para(&finger_para, &finger_confirm) == ESP_OK
+        && finger_confirm == DRIVER_AS608_CONFIRM_OK) {
+        s_finger_ready = true;
+        ESP_LOGI(TAG, "指纹模块自检通过");
+    } else {
+        s_finger_ready = false;
+        ESP_LOGW(TAG, "指纹模块自检失败");
+    }
 
-    // ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
-    // float humidity = 0.0f;
-    // float temperature = 0.0f;
-    // s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
-    // if (s_sensor_ready) {
-    //     ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
-    // } else {
-    //     ESP_LOGW(TAG, "DHT11 自检失败");
-    // }
+    ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
+    float humidity = 0.0f;
+    float temperature = 0.0f;
+    s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
+    if (s_sensor_ready) {
+        ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
+    } else {
+        ESP_LOGW(TAG, "DHT11 自检失败");
+    }
 
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");
@@ -348,8 +368,11 @@ void app_main(void)
     setup_ui(&guider_ui);
     // ESP_LOGI(TAG, "Guider events init begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
     events_init(&guider_ui);
+    
     events_set_admin_card_write_callback(admin_card_write_mode_cb, NULL);
     events_set_admin_return_callback(admin_return_cb, NULL);
+    events_set_admin_face_register_callback(admin_face_register_cb, NULL);
+    events_set_admin_finger_register_callback(admin_finger_register_cb, NULL);
     // ESP_LOGI(TAG, "Guider UI unlock begin, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));
     lvgl_port_unlock();
     // ESP_LOGI(TAG, "Guider UI init done, main_stack_hwm=%u", (unsigned)uxTaskGetStackHighWaterMark(NULL));

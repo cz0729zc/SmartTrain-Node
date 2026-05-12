@@ -212,6 +212,7 @@ LV_FONT_DECLARE(lv_font_montserratMedium_28)
 LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_16)
 LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_12)
 
+LV_FONT_DECLARE(lv_font_ZiTiQuanWeiJunHeiW22_18)
 
 #ifdef __cplusplus
 }
