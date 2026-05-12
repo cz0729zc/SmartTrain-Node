@@ -24,8 +24,8 @@ extern "C" {
  * LCD 引脚定义 (ILI9488)
  ******************************************************************************/
 #define BSP_LCD_CS          GPIO_NUM_7
-#define BSP_LCD_DC          GPIO_NUM_15
-#define BSP_LCD_RST         GPIO_NUM_18
+#define BSP_LCD_DC          GPIO_NUM_18
+#define BSP_LCD_RST         GPIO_NUM_15
 // #define BSP_LCD_CS          GPIO_NUM_35
 // #define BSP_LCD_DC          GPIO_NUM_37
 // #define BSP_LCD_RST         GPIO_NUM_36
