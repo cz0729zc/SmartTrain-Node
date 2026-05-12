@@ -321,6 +321,24 @@ esp_err_t attendance_profile_bind_finger_page(const char *uid, uint16_t finger_p
     return save_profiles_to_nvs();
 }
 
+esp_err_t attendance_profile_clear_biometric_bindings(void)
+{
+    if (!s_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    for (size_t i = 0; i < s_profile_count; ++i) {
+        s_profiles[i].face_user_id = ATTENDANCE_FACE_ID_UNBOUND;
+        s_profiles[i].finger_page_id = ATTENDANCE_FINGER_ID_UNBOUND;
+        s_profiles[i].has_face_bound = false;
+        s_profiles[i].has_finger_bound = false;
+    }
+
+    ESP_LOGW(TAG, "cleared local biometric bindings, profiles kept=%u",
+             (unsigned)s_profile_count);
+    return save_profiles_to_nvs();
+}
+
 size_t attendance_profile_count(void)
 {
     return s_profile_count;

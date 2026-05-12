@@ -102,6 +102,15 @@ esp_err_t app_face_enroll_single(const char *user_name, bool admin, uint8_t time
     return ret;
 }
 
+esp_err_t app_face_delete_all(uint8_t *result_code)
+{
+    if (!s_face_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    return driver_fm225_delete_all(result_code);
+}
+
 const char *app_face_result_message(uint8_t result_code)
 {
     return driver_fm225_result_message(result_code);

@@ -43,6 +43,8 @@ static const char *TAG = "main";
 #define FM225_UART_TX_GPIO  GPIO_NUM_11
 #define FM225_UART_RX_GPIO  GPIO_NUM_10
 #define FM225_UART_BAUD     115200
+/* Set to 1 for one debug boot, then set back to 0 before normal demos. */
+#define CLEAR_BIOMETRIC_DB_ON_BOOT 1
 
 /* 管理员卡 UID（按实际管理员卡 UID 修改） */
 #define ADMIN_CARD_UID      "16:CE:D0:AA"
@@ -58,6 +60,88 @@ static attendance_profile_t s_active_profile = {0};
 static SemaphoreHandle_t s_bio_mutex = NULL;
 static char s_admin_target_sid[ATTENDANCE_STUDENT_ID_MAX_LEN] = {0};
 static lv_obj_t *s_touch_info_label = NULL;
+
+static bool probe_face_module(const app_face_config_t *face_cfg)
+{
+    if (app_face_init(face_cfg) != ESP_OK) {
+        return false;
+    }
+
+    esp_err_t ready_ret = app_face_wait_ready(3000);
+    if (ready_ret == ESP_OK) {
+        return true;
+    }
+
+    uint8_t result_code = 0xFF;
+    driver_fm225_status_t status = DRIVER_FM225_STATUS_INVALID;
+    esp_err_t status_ret = app_face_get_status(&status, &result_code);
+    if (status_ret == ESP_OK && result_code == DRIVER_FM225_RESULT_SUCCESS) {
+        ESP_LOGW(TAG,
+                 "FM225 ready note missed, status probe passed status=%u",
+                 (unsigned)status);
+        return true;
+    }
+
+    ESP_LOGW(TAG,
+             "FM225 probe failed ready=%s status=%s result=0x%02X(%s)",
+             esp_err_to_name(ready_ret),
+             esp_err_to_name(status_ret),
+             (unsigned)result_code,
+             app_face_result_message(result_code));
+    return false;
+}
+
+static void clear_biometric_databases_on_boot(void)
+{
+#if CLEAR_BIOMETRIC_DB_ON_BOOT
+    uint8_t face_result = 0xFF;
+    uint8_t finger_confirm = 0xFF;
+
+    ESP_LOGW(TAG, "CLEAR_BIOMETRIC_DB_ON_BOOT enabled: clearing FM225/AS608 templates");
+
+    if (s_face_ready) {
+        esp_err_t ret = app_face_delete_all(&face_result);
+        if (ret == ESP_OK && face_result == DRIVER_FM225_RESULT_SUCCESS) {
+            ESP_LOGW(TAG, "FM225 face database cleared");
+        } else {
+            ESP_LOGE(TAG,
+                     "FM225 face database clear failed ret=%s result=0x%02X(%s)",
+                     esp_err_to_name(ret),
+                     (unsigned)face_result,
+                     app_face_result_message(face_result));
+        }
+    } else {
+        ESP_LOGW(TAG, "skip FM225 clear: face module not ready");
+    }
+
+    if (s_finger_ready) {
+        esp_err_t ret = app_fingerprint_empty(&finger_confirm);
+        if (ret == ESP_OK && finger_confirm == DRIVER_AS608_CONFIRM_OK) {
+            ESP_LOGW(TAG, "AS608 fingerprint database cleared");
+        } else {
+            ESP_LOGE(TAG,
+                     "AS608 fingerprint database clear failed ret=%s confirm=0x%02X(%s)",
+                     esp_err_to_name(ret),
+                     (unsigned)finger_confirm,
+                     app_fingerprint_confirm_message(finger_confirm));
+        }
+    } else {
+        ESP_LOGW(TAG, "skip AS608 clear: fingerprint module not ready");
+    }
+
+    esp_err_t ret = attendance_profile_init();
+    if (ret == ESP_OK) {
+        ret = attendance_profile_clear_biometric_bindings();
+        if (ret == ESP_OK) {
+            attendance_profile_dump();
+        } else {
+            ESP_LOGE(TAG, "clear local biometric bindings failed: %s", esp_err_to_name(ret));
+        }
+    } else {
+        ESP_LOGE(TAG, "attendance profile init before clear failed: %s", esp_err_to_name(ret));
+    }
+#endif
+}
 
 /*
  * Set to 1 to boot into an LVGL touch hit-test page only.
@@ -319,7 +403,7 @@ void app_main(void)
         .baud_rate = FM225_UART_BAUD,
         .cmd_timeout_ms = 3000,
     };
-    if (app_face_init(&face_cfg) == ESP_OK && app_face_wait_ready(1000) == ESP_OK) {
+    if (probe_face_module(&face_cfg)) {
         s_face_ready = true;
         ESP_LOGI(TAG, "人脸模块自检通过");
     } else {
@@ -339,16 +423,9 @@ void app_main(void)
         s_finger_ready = false;
         ESP_LOGW(TAG, "指纹模块自检失败");
     }
+    
+    clear_biometric_databases_on_boot();
 
-    ESP_LOGI(TAG, "开始自检 DHT11 传感器...");
-    float humidity = 0.0f;
-    float temperature = 0.0f;
-    s_sensor_ready = (app_sensor_probe(&humidity, &temperature) == ESP_OK);
-    if (s_sensor_ready) {
-        ESP_LOGI(TAG, "DHT11 自检通过: T=%.1fC H=%.1f%%", temperature, humidity);
-    } else {
-        ESP_LOGW(TAG, "DHT11 自检失败");
-    }
 
     ESP_ERROR_CHECK(app_lvgl_init());
     ESP_LOGI(TAG, "初始化 Guider UI...");

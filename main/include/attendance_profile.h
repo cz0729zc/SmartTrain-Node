@@ -83,6 +83,8 @@ esp_err_t attendance_profile_bind_face_id(const char *uid, uint16_t face_user_id
  */
 esp_err_t attendance_profile_bind_finger_page(const char *uid, uint16_t finger_page_id);
 
+esp_err_t attendance_profile_clear_biometric_bindings(void);
+
 /**
  * @brief 获取当前档案数量
  */

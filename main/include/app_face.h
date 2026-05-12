@@ -30,6 +30,8 @@ esp_err_t app_face_verify_once(uint8_t timeout_s, driver_fm225_verify_result_t *
 esp_err_t app_face_enroll_single(const char *user_name, bool admin, uint8_t timeout_s,
                                  uint16_t *user_id, uint8_t *result_code);
 
+esp_err_t app_face_delete_all(uint8_t *result_code);
+
 const char *app_face_result_message(uint8_t result_code);
 
 #ifdef __cplusplus

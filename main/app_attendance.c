@@ -28,6 +28,8 @@ static const char *TAG = "app_attendance";
 #define RFID_BLOCK_SIZE 16
 #define UID_BYTE_STR_LEN 3
 #define CARD_WRITE_TARGET_COUNT 3
+#define REGISTER_START_DELAY_MS 2000
+#define REGISTER_RESULT_HOLD_MS 4000
 
 typedef enum {
     ATTENDANCE_EVENT_CARD = 0,
@@ -405,8 +407,13 @@ static void attendance_handle_admin_card(const char *uid)
 
 static void attendance_finish_registration_delay(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(1200));
+    vTaskDelay(pdMS_TO_TICKS(REGISTER_RESULT_HOLD_MS));
     attendance_show_selected_admin();
+}
+
+static void attendance_prepare_registration_delay(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(REGISTER_START_DELAY_MS));
 }
 
 static void attendance_register_face_selected(void)
@@ -419,7 +426,7 @@ static void attendance_register_face_selected(void)
 
     if (!s_has_selected_profile) {
         ESP_LOGW(TAG, "face register rejected: no selected student");
-        events_show_admin_status("请刷学员卡");
+        events_show_admin_status("Swipe student card first");
         return;
     }
 
@@ -430,6 +437,8 @@ static void attendance_register_face_selected(void)
              "face register begin uid=%s student_id=%s",
              s_selected_profile.uid,
              s_selected_profile.student_id);
+    events_show_face_register(s_selected_profile.student_id, "Get ready for face");
+    attendance_prepare_registration_delay();
     events_show_face_register(s_selected_profile.student_id, "Face enrolling");
 
     esp_err_t ret = app_face_enroll_single(s_selected_profile.student_id,
@@ -476,7 +485,7 @@ static void attendance_register_finger_selected(void)
 
     if (!s_has_selected_profile) {
         ESP_LOGW(TAG, "finger register rejected: no selected student");
-        events_show_admin_status("请刷学员卡");
+        events_show_admin_status("Swipe student card first");
         return;
     }
 
@@ -497,6 +506,8 @@ static void attendance_register_finger_selected(void)
              s_selected_profile.uid,
              s_selected_profile.student_id,
              (unsigned)page_id);
+    events_show_finger_register(s_selected_profile.student_id, "Get ready for finger");
+    attendance_prepare_registration_delay();
     events_show_finger_register(s_selected_profile.student_id, "Press same finger twice");
 
     ret = app_fingerprint_enroll(page_id, &confirm_code);

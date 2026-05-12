@@ -73,7 +73,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_pos(ui->screen_spinner_1, 200, 240);
     lv_obj_set_size(ui->screen_spinner_1, 50, 50);
     lv_spinner_set_anim_params(ui->screen_spinner_1, 2000, 1);
-    lv_obj_add_flag(ui->screen_spinner_1, LV_OBJ_FLAG_HIDDEN);
+
 
     //Write style for screen_spinner_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
     lv_obj_set_style_pad_top(ui->screen_spinner_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);

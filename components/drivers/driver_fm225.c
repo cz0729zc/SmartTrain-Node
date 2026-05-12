@@ -489,7 +489,7 @@ const char *driver_fm225_result_message(uint8_t result_code)
         case DRIVER_FM225_RESULT_FAILED_NO_MEMORY: return "no memory";
         case DRIVER_FM225_RESULT_FAILED_UNKNOWN_USER: return "unknown user";
         case DRIVER_FM225_RESULT_FAILED_MAX_USER: return "max user";
-        case DRIVER_FM225_RESULT_FAILED_FACE_ENROLLED: return "face enrolled";
+        case DRIVER_FM225_RESULT_FAILED_FACE_ENROLLED: return "face already enrolled";
         case DRIVER_FM225_RESULT_FAILED_LIVENESS: return "liveness check failed";
         case DRIVER_FM225_RESULT_FAILED_TIMEOUT: return "timeout";
         case DRIVER_FM225_RESULT_FAILED_AUTH: return "authorization failed";
