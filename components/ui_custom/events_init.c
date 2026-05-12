@@ -43,6 +43,7 @@ static char s_unregistered_reason[48] = {0};
 static const char *TAG = "events_init";
 
 #define SELFCHECK_STANDBY_DELAY_MS 5000
+#define EVENTS_LVGL_LOCK_TIMEOUT_MS 1000
 
 static void selfcheck_finish_cb(void *arg);
 static void request_standby_screen_load(void);
@@ -204,11 +205,7 @@ static void selfcheck_apply_result(events_selfcheck_item_t item, bool ok, const 
 		return;
 	}
 
-	if (ok) {
-		if (s_ui->screen_btn_selfcheck_return != NULL) {
-			lv_obj_add_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
-		}
-	} else {
+	if (!ok) {
 		s_selfcheck_failed = true;
 		if (s_ui->screen_btn_selfcheck_return != NULL) {
 			lv_obj_clear_flag(s_ui->screen_btn_selfcheck_return, LV_OBJ_FLAG_HIDDEN);
@@ -337,9 +334,11 @@ void events_init(lv_ui *ui)
 void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const char *log_text)
 {
 	ESP_LOGI(TAG, "selfcheck set begin item=%d ok=%d", (int)item, (int)ok);
-	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
 		selfcheck_apply_result(item, ok, log_text);
 		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "selfcheck set skipped, LVGL lock timeout item=%d", (int)item);
 	}
 	ESP_LOGI(TAG, "selfcheck set end item=%d", (int)item);
 }
@@ -347,9 +346,11 @@ void events_selfcheck_set_result(events_selfcheck_item_t item, bool ok, const ch
 void events_selfcheck_finish(void)
 {
 	ESP_LOGI(TAG, "selfcheck finish begin");
-	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
 		selfcheck_finish_cb(NULL);
 		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "selfcheck finish skipped, LVGL lock timeout");
 	}
 	ESP_LOGI(TAG, "selfcheck finish end");
 }
@@ -418,7 +419,7 @@ void events_show_admin(const char *card_text)
 	if (s_ui == NULL) {
 		return;
 	}
-	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
 		if (s_ui->screen_admin_del) {
 			setup_scr_screen_admin(s_ui);
 			s_ui->screen_admin_del = false;
@@ -444,7 +445,7 @@ void events_show_confirm(const char *student_id, const char *card_id)
 	if (s_ui == NULL) {
 		return;
 	}
-	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
 		if (s_ui->screen_Confirm_del) {
 			setup_scr_screen_Confirm(s_ui);
 			s_ui->screen_Confirm_del = false;
@@ -475,7 +476,7 @@ void events_show_unregistered(const char *card_id, const char *reason)
 	if (s_ui == NULL) {
 		return;
 	}
-	if (lvgl_port_lock(pdMS_TO_TICKS(200))) {
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
 		if (s_ui->screen_unregistered_del) {
 			setup_scr_screen_unregistered(s_ui);
 			s_ui->screen_unregistered_del = false;

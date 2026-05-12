@@ -374,10 +374,8 @@ void app_main(void)
         ESP_LOGW(TAG, "attendance start failed: %s", esp_err_to_name(attendance_err));
     }
 
-    events_show_standby();
-
     ESP_ERROR_CHECK(app_network_start());
     // ESP_ERROR_CHECK(app_perf_monitor_start());
-    log_system_status("network_started");
+    // log_system_status("network_started");
     ESP_LOGI(TAG, "app_main 执行完毕");
 }
