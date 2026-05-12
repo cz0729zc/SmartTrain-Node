@@ -346,6 +346,8 @@ static void selfcheck_finish_cb(void *arg)
 		if (s_standby_delay_timer == NULL) {
 			/* 定时器创建失败时，退化为立即切屏，避免流程卡住 */
 			load_standby_screen();
+		} else {
+			lv_timer_set_repeat_count(s_standby_delay_timer, 1);
 		}
 	} else {
 		cancel_standby_delay_timer();
