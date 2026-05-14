@@ -34,12 +34,14 @@ static const char *TAG = "app_attendance";
 #define VERIFY_START_DELAY_MS 2000
 #define VERIFY_RESULT_HOLD_MS 4000
 #define VERIFY_TIMEOUT_S 15
+#define ATTENDANCE_RECORD_DISPLAY_COUNT 5
 
 typedef enum {
     ATTENDANCE_EVENT_CARD = 0,
     ATTENDANCE_EVENT_ENTER_CARD_WRITE_MODE,
     ATTENDANCE_EVENT_REGISTER_FACE,
     ATTENDANCE_EVENT_REGISTER_FINGER,
+    ATTENDANCE_EVENT_SHOW_RECORDS,
     ATTENDANCE_EVENT_EXIT_ADMIN_MODE,
     ATTENDANCE_EVENT_VERIFY_FACE,
     ATTENDANCE_EVENT_VERIFY_FINGER,
@@ -730,6 +732,60 @@ static void attendance_register_finger_selected(void)
     attendance_finish_registration_delay();
 }
 
+static void attendance_show_records(void)
+{
+    static attendance_record_item_t items[ATTENDANCE_RECORD_DISPLAY_COUNT];
+    static char text[512];
+    static char status[80];
+    size_t count = 0;
+
+    ESP_LOGI(TAG,
+             "show records begin stack_hwm=%u",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+
+    memset(items, 0, sizeof(items));
+    memset(text, 0, sizeof(text));
+    memset(status, 0, sizeof(status));
+
+    esp_err_t ret = attendance_record_read_recent(items,
+                                                  sizeof(items) / sizeof(items[0]),
+                                                  &count);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "read attendance records failed: %s", esp_err_to_name(ret));
+        snprintf(status, sizeof(status), "Read failed: %s", esp_err_to_name(ret));
+        events_show_records("No records available", 0, status);
+        return;
+    }
+
+    if (count == 0) {
+        events_show_records("No records yet", 0, "/records/attendance.csv");
+        return;
+    }
+
+    size_t pos = 0;
+    for (size_t i = 0; i < count; ++i) {
+        const attendance_record_item_t *item = &items[i];
+        int written = snprintf(text + pos,
+                               sizeof(text) - pos,
+                               "%u. %s  %s  %s\n",
+                               (unsigned)(i + 1),
+                               item->time_text[0] ? item->time_text : "--:--:--",
+                               item->student_id[0] ? item->student_id : "-",
+                               item->method[0] ? item->method : "ok");
+        if (written <= 0 || (size_t)written >= sizeof(text) - pos) {
+            text[sizeof(text) - 1] = '\0';
+            break;
+        }
+        pos += (size_t)written;
+    }
+
+    snprintf(status, sizeof(status), "Recent %u records from /records/attendance.csv", (unsigned)count);
+    events_show_records(text, count, status);
+    ESP_LOGI(TAG,
+             "show records end stack_hwm=%u",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+}
+
 static void attendance_handle_card(const char *uid)
 {
     attendance_profile_t profile = {0};
@@ -842,6 +898,8 @@ static void attendance_task(void *arg)
                 attendance_register_face_selected();
             } else if (event.type == ATTENDANCE_EVENT_REGISTER_FINGER) {
                 attendance_register_finger_selected();
+            } else if (event.type == ATTENDANCE_EVENT_SHOW_RECORDS) {
+                attendance_show_records();
             } else if (event.type == ATTENDANCE_EVENT_EXIT_ADMIN_MODE) {
                 attendance_exit_admin_mode();
             } else if (event.type == ATTENDANCE_EVENT_VERIFY_FACE) {
@@ -956,6 +1014,11 @@ esp_err_t app_attendance_register_face_selected(void)
 esp_err_t app_attendance_register_fingerprint_selected(void)
 {
     return attendance_send_simple_event(ATTENDANCE_EVENT_REGISTER_FINGER);
+}
+
+esp_err_t app_attendance_show_records(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_SHOW_RECORDS);
 }
 
 esp_err_t app_attendance_exit_card_write_mode(void)

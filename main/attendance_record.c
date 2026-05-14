@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "esp_log.h"
@@ -16,6 +18,51 @@ static const char *TAG = "attendance_record";
     "ts,time,student_id,card_uid,method,result,reason,face_user_id,finger_page_id\n"
 
 static bool s_record_inited = false;
+
+static void strip_line_end(char *line)
+{
+    if (line == NULL) {
+        return;
+    }
+
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+        line[len - 1] = '\0';
+        len--;
+    }
+}
+
+static esp_err_t parse_record_line(const char *line, attendance_record_item_t *item)
+{
+    if (line == NULL || item == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char work[192] = {0};
+    strlcpy(work, line, sizeof(work));
+    strip_line_end(work);
+
+    const char *fields[9] = {0};
+    char *saveptr = NULL;
+    char *token = strtok_r(work, ",", &saveptr);
+    size_t field_count = 0;
+    while (token != NULL && field_count < (sizeof(fields) / sizeof(fields[0]))) {
+        fields[field_count++] = token;
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+
+    if (field_count < 7) {
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
+    memset(item, 0, sizeof(*item));
+    strlcpy(item->time_text, fields[1], sizeof(item->time_text));
+    strlcpy(item->student_id, fields[2], sizeof(item->student_id));
+    strlcpy(item->card_uid, fields[3], sizeof(item->card_uid));
+    strlcpy(item->method, fields[4], sizeof(item->method));
+    strlcpy(item->result, fields[5], sizeof(item->result));
+    return ESP_OK;
+}
 
 static esp_err_t ensure_record_header(void)
 {
@@ -123,5 +170,65 @@ esp_err_t attendance_record_append_success(time_t ts,
              student_id,
              card_uid,
              method);
+    return ESP_OK;
+}
+
+esp_err_t attendance_record_read_recent(attendance_record_item_t *items,
+                                        size_t max_items,
+                                        size_t *out_count)
+{
+    if (!s_record_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (items == NULL || max_items == 0 || out_count == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *out_count = 0;
+
+    FILE *fp = fopen(ATTENDANCE_RECORD_PATH, "r");
+    if (fp == NULL) {
+        ESP_LOGE(TAG, "open %s read failed", ATTENDANCE_RECORD_PATH);
+        return ESP_FAIL;
+    }
+
+    attendance_record_item_t *ring = calloc(max_items, sizeof(*ring));
+    if (ring == NULL) {
+        fclose(fp);
+        ESP_LOGE(TAG, "allocate attendance record ring failed max_items=%u", (unsigned)max_items);
+        return ESP_ERR_NO_MEM;
+    }
+
+    char line[192] = {0};
+    size_t total_records = 0;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        if (strncmp(line, "ts,", 3) == 0) {
+            continue;
+        }
+
+        attendance_record_item_t parsed = {0};
+        esp_err_t ret = parse_record_line(line, &parsed);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "skip bad attendance record line: %s", line);
+            continue;
+        }
+
+        ring[total_records % max_items] = parsed;
+        total_records++;
+    }
+
+    fclose(fp);
+
+    size_t count = total_records < max_items ? total_records : max_items;
+    for (size_t i = 0; i < count; ++i) {
+        size_t newest_index = (total_records - 1U - i) % max_items;
+        items[i] = ring[newest_index];
+    }
+    free(ring);
+
+    *out_count = count;
+    ESP_LOGI(TAG, "attendance record read recent count=%u path=%s",
+             (unsigned)count,
+             ATTENDANCE_RECORD_PATH);
     return ESP_OK;
 }

@@ -158,7 +158,7 @@ app_main()
 
 ## 5. GUI Guider UI 页面
 
-`components/ui_custom/gui_guider.h` 中实际包含 8 个 screen，其中 1 个启动自检页，7 个业务页。
+`components/ui_custom/gui_guider.h` 中实际包含 9 个 screen，其中 1 个启动自检页，8 个业务页。
 
 | 页面 | 代码对象 | 角色 |
 | --- | --- | --- |
@@ -170,15 +170,17 @@ app_main()
 | 成功页 | `screen_success` | 打卡成功，显示学号、卡号、打卡时间，8 秒后自动返回 Standby |
 | 未注册/失败页 | `screen_unregistered` | 卡未注册、未绑定、验证失败或非本人 |
 | 管理员页 | `screen_admin` | 管理员/注册流程，选择注册人脸或指纹 |
+| 考勤记录页 | `screen_records` | 管理员查看设备本地最近考勤流水 |
 
 当前 UI 事件接入情况：
 
 - 已接入：自检页返回按钮、自检结束后延迟进入 Standby。
 - 已接入：Standby 真实时间、WiFi 状态、环境数据显示。
-- 已接入：Admin 返回、写卡模式、人脸注册、指纹注册按钮。
+- 已接入：Admin 返回、写卡模式、人脸注册、指纹注册、查看考勤记录按钮。
 - 已接入：Unregistered 返回按钮和 3 秒自动返回，支持返回 Standby 或 Admin。
 - 已接入：Confirm 返回、人脸打卡、指纹打卡按钮。
 - 已接入：Success 返回按钮和 8 秒自动返回；页面只展示“Check-in OK”、学号、卡号、打卡时间，不在成功页标题里显示 `face` / `fingerprint`。
+- 已接入：Records 页面从 `/records/attendance.csv` 读取最近成功记录，显示时间、学号和打卡方式，返回后回到 Admin。
 
 ---
 
@@ -364,6 +366,7 @@ Standby
 | 文件路径 | `/records/attendance.csv` |
 | 写入时机 | 人脸或指纹打卡成功，且返回 ID 与当前卡片档案绑定值匹配 |
 | 当前记录范围 | 只追加成功记录；失败记录暂只打印日志 |
+| 屏幕查看 | 管理员页点击 `Records`，进入 `screen_records` 查看最近 5 条 |
 
 CSV 表头：
 
@@ -377,13 +380,14 @@ ts,time,student_id,card_uid,method,result,reason,face_user_id,finger_page_id
 records SPIFFS mounted total=... used=...
 created attendance record CSV: /records/attendance.csv
 attendance record appended student_id=... card=... method=...
+attendance record read recent count=... path=/records/attendance.csv
 ```
 
-注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
+注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。当前支持在设备屏幕上查看最近 5 条成功考勤记录；若要在电脑端拿到完整 CSV，仍需要后续增加导出接口、串口 dump 命令或文件系统读取工具。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
 
 ---
 
-## 8. 真实企业线下培训通常怎么做
+# 8. 真实企业线下培训通常怎么做
 
 真实企业系统一般不会只靠终端自己维护全部名单，而是分为后台和终端两层：
 
@@ -398,7 +402,7 @@ attendance record appended student_id=... card=... method=...
 
 ---
 
-## 9. MQTT 上报建议
+# 9. MQTT 上报建议
 
 当前 `main/app_network.c` 上报的是 OneNET 属性主题：
 
@@ -449,7 +453,7 @@ attendance_event
 
 ---
 
-## 10. 硬件引脚
+# 10. 硬件引脚
 
 当前 BSP 引脚定义在 `components/bsp/include/bsp_pin_defs.h`。
 
@@ -464,8 +468,8 @@ attendance_event
 | LCD | Backlight | GPIO40 |
 | Touch | CS | GPIO42 |
 | Touch | INT | NC |
-| RFID RC522 I2C | SDA | GPIO21 |
-| RFID RC522 I2C | SCL | GPIO47 |
+| RFID RC522 I2C | SDA | GPIO20 |
+| RFID RC522 I2C | SCL | GPIO21 |
 | FM225 | UART1 TX/RX | GPIO11/GPIO10 |
 | AS608 | UART2 TX/RX | GPIO17/GPIO16 |
 | DHT11 | DATA | GPIO6 |
@@ -480,7 +484,7 @@ attendance_event
 
 ---
 
-## 11. sdkconfig 与内存策略
+# 11. sdkconfig 与内存策略
 
 当前 LVGL 内存策略建议：
 
@@ -505,7 +509,7 @@ CONFIG_LV_USE_BUILTIN_SPRINTF=y
 
 ---
 
-## 12. 任务与核心分配
+# 12. 任务与核心分配
 
 | 任务/子系统 | 推荐 Core | 当前情况 |
 | --- | --- | --- |
@@ -525,7 +529,7 @@ CONFIG_LV_USE_BUILTIN_SPRINTF=y
 
 ---
 
-## 13. 考勤状态机实现边界
+# 13. 考勤状态机实现边界
 
 当前已经新增 `main/app_attendance.c` 和 `main/include/app_attendance.h`，作为考勤业务状态机唯一入口。
 
@@ -560,7 +564,7 @@ esp_err_t app_attendance_confirm_return(void);
 
 ---
 
-## 14. 开发规范摘要
+# 14. 开发规范摘要
 
 1. `main/` 是应用层，负责业务编排；`components/` 是可复用组件层。
 2. 对外 API 优先返回 `esp_err_t`。
@@ -575,12 +579,12 @@ esp_err_t app_attendance_confirm_return(void);
 
 ---
 
-## 15. 已知缺口
+# 15. 已知缺口
 
 - `attendance_profile` 当前字段仍包含 `uid` 和 `name`，与“直接读卡内学号”方案不完全贴合，建议后续重命名或新增 `student_id` 主键模型。
 - 考勤事件 MQTT 上报未实现。
 - 本地考勤流水当前只记录成功打卡；失败、超时、非本人等审计流水后续可扩展。
-- `/records/attendance.csv` 在设备 SPIFFS 中，若需要电脑端查看，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
+- `/records/attendance.csv` 已支持管理员在屏幕查看最近 5 条；若需要电脑端查看完整 CSV，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
 - `CLEAR_BIOMETRIC_DB_ON_BOOT` 是调试开关，正常演示前应确认是否关闭，避免上电清空 FM225/AS608 模板和本地绑定。
 - CO2 已从 UART1 调整到 UART0；启用 CO2 前仍需把 console 从 UART0 切到 USB Serial/JTAG。
 - 高号 GPIO 仍需按实际模组手册复核。

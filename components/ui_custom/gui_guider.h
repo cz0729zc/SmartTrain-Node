@@ -155,6 +155,20 @@ typedef struct
 	lv_obj_t *screen_admin_cont_4;
 	lv_obj_t *screen_admin_label_7;
 	lv_obj_t *screen_admin_label_6;
+	lv_obj_t *screen_records;
+	bool screen_records_del;
+	lv_obj_t *screen_records_status_bar;
+	lv_obj_t *screen_records_label_time;
+	lv_obj_t *screen_records_cont_status;
+	lv_obj_t *screen_records_label_wifi_icon;
+	lv_obj_t *screen_records_label_wifi_text;
+	lv_obj_t *screen_records_label_title;
+	lv_obj_t *screen_records_cont_body;
+	lv_obj_t *screen_records_label_body;
+	lv_obj_t *screen_records_label_status;
+	lv_obj_t *screen_records_control_bar;
+	lv_obj_t *screen_records_btn_return;
+	lv_obj_t *screen_records_btn_return_label;
 }lv_ui;
 
 typedef void (*ui_setup_scr_t)(lv_ui * ui);
@@ -190,6 +204,7 @@ void setup_scr_screen_finger(lv_ui *ui);
 void setup_scr_screen_success(lv_ui *ui);
 void setup_scr_screen_unregistered(lv_ui *ui);
 void setup_scr_screen_admin(lv_ui *ui);
+void setup_scr_screen_records(lv_ui *ui);
 LV_IMAGE_DECLARE(_RFID_RGB565A8_150x150);
 
 LV_IMAGE_DECLARE(_finger_RGB565A8_200x125);

@@ -45,12 +45,16 @@ static char s_success_student_id[32] = {0};
 static char s_success_card_id[48] = {0};
 static char s_success_check_time[32] = {0};
 static char s_success_method[16] = {0};
+static char s_records_text[512] = "No records yet";
+static char s_records_status_text[80] = "/records/attendance.csv";
+static size_t s_records_count = 0;
 static char s_unregistered_card_id[48] = {0};
 static char s_unregistered_reason[48] = {0};
 static events_return_target_t s_unregistered_return_target = EVENTS_RETURN_STANDBY;
 static lv_timer_t *s_unregistered_return_timer = NULL;
 static lv_timer_t *s_success_return_timer = NULL;
 static lv_obj_t *s_admin_card_write_btn = NULL;
+static lv_obj_t *s_admin_records_btn = NULL;
 static events_admin_card_write_cb_t s_admin_card_write_cb = NULL;
 static void *s_admin_card_write_user_data = NULL;
 static events_admin_return_cb_t s_admin_return_cb = NULL;
@@ -59,6 +63,8 @@ static events_admin_register_cb_t s_admin_face_register_cb = NULL;
 static void *s_admin_face_register_user_data = NULL;
 static events_admin_register_cb_t s_admin_finger_register_cb = NULL;
 static void *s_admin_finger_register_user_data = NULL;
+static events_admin_records_cb_t s_admin_records_cb = NULL;
+static void *s_admin_records_user_data = NULL;
 static events_confirm_action_cb_t s_confirm_return_cb = NULL;
 static void *s_confirm_return_user_data = NULL;
 static events_confirm_action_cb_t s_confirm_face_check_cb = NULL;
@@ -81,9 +87,12 @@ static void request_standby_screen_load(void);
 static void load_admin_screen(void);
 static void load_confirm_screen(void);
 static void load_success_screen(void);
+static void load_records_screen(void);
+static void load_records_screen_async_cb(void *arg);
 static void apply_admin_status(void);
 static void apply_confirm_status(void);
 static void apply_success_status(void);
+static void apply_records_status(void);
 static void apply_face_status(void);
 static void apply_finger_status(void);
 static void apply_unregistered_status(void);
@@ -490,6 +499,15 @@ static void admin_finger_register_btn_cb(lv_event_t *e)
 	}
 }
 
+static void admin_records_btn_cb(lv_event_t *e)
+{
+	(void)e;
+	ESP_LOGI(TAG, "admin records clicked");
+	if (s_admin_records_cb != NULL) {
+		s_admin_records_cb(s_admin_records_user_data);
+	}
+}
+
 static void confirm_return_btn_cb(lv_event_t *e)
 {
 	(void)e;
@@ -529,6 +547,13 @@ static void success_return_btn_cb(lv_event_t *e)
 	(void)e;
 	ESP_LOGI(TAG, "success return clicked");
 	return_from_success();
+}
+
+static void records_return_btn_cb(lv_event_t *e)
+{
+	(void)e;
+	ESP_LOGI(TAG, "records return clicked");
+	load_admin_screen();
 }
 
 static void apply_admin_status(void)
@@ -626,6 +651,38 @@ static void apply_success_status(void)
 	}
 }
 
+static void apply_records_status(void)
+{
+	if (s_ui == NULL || s_ui->screen_records_del) {
+		return;
+	}
+
+	if (s_ui->screen_records_label_time != NULL) {
+		lv_label_set_text(s_ui->screen_records_label_time, s_standby_time_text);
+	}
+	if (s_ui->screen_records_label_wifi_icon != NULL) {
+		lv_obj_set_style_text_color(s_ui->screen_records_label_wifi_icon,
+			s_standby_wifi_connected ? lv_color_hex(0x52C41A) : lv_color_hex(0xBFBFBF),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_records_label_wifi_text != NULL) {
+		lv_label_set_text(s_ui->screen_records_label_wifi_text,
+			s_standby_wifi_connected ? "WiFi OK" : "WiFi OFF");
+		lv_obj_set_style_text_color(s_ui->screen_records_label_wifi_text,
+			s_standby_wifi_connected ? lv_color_hex(0x1890FF) : lv_color_hex(0x8C8C8C),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+	if (s_ui->screen_records_label_body != NULL) {
+		lv_label_set_text(s_ui->screen_records_label_body, s_records_text);
+	}
+	if (s_ui->screen_records_label_status != NULL) {
+		lv_label_set_text(s_ui->screen_records_label_status, s_records_status_text);
+		lv_obj_set_style_text_color(s_ui->screen_records_label_status,
+			s_records_count > 0 ? lv_color_hex(0x595959) : lv_color_hex(0x8C8C8C),
+			LV_PART_MAIN | LV_STATE_DEFAULT);
+	}
+}
+
 static void apply_face_status(void)
 {
 	if (s_ui == NULL || s_ui->screen_face_del) {
@@ -701,6 +758,35 @@ static void ensure_admin_card_write_button(void)
 	lv_obj_center(label);
 }
 
+static void ensure_admin_records_button(void)
+{
+	if (s_ui == NULL || s_ui->screen_admin_control_bar == NULL) {
+		return;
+	}
+
+	if (s_admin_records_btn != NULL) {
+		return;
+	}
+
+	s_admin_records_btn = lv_button_create(s_ui->screen_admin_control_bar);
+	lv_obj_set_pos(s_admin_records_btn, 240, 0);
+	lv_obj_set_size(s_admin_records_btn, 100, 30);
+	lv_obj_clear_flag(s_admin_records_btn, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_event_cb(s_admin_records_btn, admin_records_btn_cb, LV_EVENT_CLICKED, NULL);
+	lv_obj_set_style_bg_opa(s_admin_records_btn, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_color(s_admin_records_btn, lv_color_hex(0x13A8A8), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_border_width(s_admin_records_btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_radius(s_admin_records_btn, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_shadow_width(s_admin_records_btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	lv_obj_t *label = lv_label_create(s_admin_records_btn);
+	lv_label_set_text(label, "Records");
+	lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+	lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_text_font(label, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_center(label);
+}
+
 static void load_admin_screen(void)
 {
 	if (s_ui == NULL) {
@@ -713,6 +799,7 @@ static void load_admin_screen(void)
 		setup_scr_screen_admin(s_ui);
 		s_ui->screen_admin_del = false;
 		s_admin_card_write_btn = NULL;
+		s_admin_records_btn = NULL;
 		apply_admin_chinese_fonts();
 		if (s_ui->screen_admin_btn_return != NULL) {
 			lv_obj_add_event_cb(s_ui->screen_admin_btn_return, admin_return_btn_cb, LV_EVENT_CLICKED, NULL);
@@ -732,6 +819,7 @@ static void load_admin_screen(void)
 	}
 	apply_admin_chinese_fonts();
 	ensure_admin_card_write_button();
+	ensure_admin_records_button();
 	apply_admin_status();
 	lv_screen_load(s_ui->screen_admin);
 }
@@ -834,6 +922,36 @@ static void load_success_screen(void)
 	}
 }
 
+static void load_records_screen(void)
+{
+	if (s_ui == NULL) {
+		return;
+	}
+
+	cancel_unregistered_return_timer();
+	cancel_success_return_timer();
+
+	if (s_ui->screen_records_del) {
+		setup_scr_screen_records(s_ui);
+		s_ui->screen_records_del = false;
+		if (s_ui->screen_records_btn_return != NULL) {
+			lv_obj_add_event_cb(s_ui->screen_records_btn_return,
+				records_return_btn_cb,
+				LV_EVENT_CLICKED,
+				NULL);
+		}
+	}
+
+	apply_records_status();
+	lv_screen_load(s_ui->screen_records);
+}
+
+static void load_records_screen_async_cb(void *arg)
+{
+	(void)arg;
+	load_records_screen();
+}
+
 void events_init(lv_ui *ui)
 {
 	s_ui = ui;
@@ -886,6 +1004,12 @@ void events_set_admin_finger_register_callback(events_admin_register_cb_t callba
 {
 	s_admin_finger_register_cb = callback;
 	s_admin_finger_register_user_data = user_data;
+}
+
+void events_set_admin_records_callback(events_admin_records_cb_t callback, void *user_data)
+{
+	s_admin_records_cb = callback;
+	s_admin_records_user_data = user_data;
 }
 
 void events_set_confirm_return_callback(events_confirm_action_cb_t callback, void *user_data)
@@ -981,6 +1105,7 @@ static void standby_sync_ui(void *arg)
 	apply_admin_status();
 	apply_confirm_status();
 	apply_success_status();
+	apply_records_status();
 	apply_face_status();
 	apply_finger_status();
 }
@@ -1236,6 +1361,41 @@ void events_show_success(const char *student_id,
 		lvgl_port_unlock();
 	} else {
 		ESP_LOGW(TAG, "show success skipped, LVGL lock timeout");
+	}
+}
+
+void events_show_records(const char *records_text, size_t record_count, const char *status_text)
+{
+	if (records_text != NULL && records_text[0] != '\0') {
+		strlcpy(s_records_text, records_text, sizeof(s_records_text));
+	} else {
+		strlcpy(s_records_text, "No records yet", sizeof(s_records_text));
+	}
+	if (status_text != NULL && status_text[0] != '\0') {
+		strlcpy(s_records_status_text, status_text, sizeof(s_records_status_text));
+	} else {
+		strlcpy(s_records_status_text, "/records/attendance.csv", sizeof(s_records_status_text));
+	}
+	s_records_count = record_count;
+
+	ESP_LOGI(TAG, "show records count=%u status=%s",
+		(unsigned)s_records_count,
+		s_records_status_text);
+
+	if (s_ui == NULL) {
+		return;
+	}
+
+	if (lv_async_call(load_records_screen_async_cb, NULL) == LV_RESULT_OK) {
+		return;
+	}
+
+	ESP_LOGW(TAG, "records async load failed, fallback to locked load");
+	if (lvgl_port_lock(EVENTS_LVGL_LOCK_TIMEOUT_MS)) {
+		load_records_screen();
+		lvgl_port_unlock();
+	} else {
+		ESP_LOGW(TAG, "show records skipped, LVGL lock timeout");
 	}
 }
 
