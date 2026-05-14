@@ -33,7 +33,7 @@ static const char *TAG = "bsp_lcd";
 #define BACKLIGHT_LEDC_FREQUENCY    5000
 
 /* SPI 总线频率 */
-#define BSP_LCD_SPI_FREQ_HZ         (40 * 1000 * 1000)
+#define BSP_LCD_SPI_FREQ_HZ         (60 * 1000 * 1000)
 
 /*******************************************************************************
  * 静态变量

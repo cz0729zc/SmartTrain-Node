@@ -31,7 +31,8 @@
 
 | 模块 | 状态 | 关键文件 | 说明 |
 | --- | --- | --- | --- |
-| 系统入口 | 已接入 | `main/main.c` | 初始化 NVS、LVGL、GUI Guider UI、网络和性能监控 |
+| 系统入口 | 已接入 | `main/main.c` | 仅负责 NVS 初始化并进入 `app_bootstrap_start()` |
+| 启动编排 | 已接入 | `main/app_bootstrap.c` | 负责 LVGL/UI 初始化、启动自检、UI 回调桥接、传感器/考勤/网络启动 |
 | LVGL 显示 | 已接入 | `main/app_lvgl.c`, `components/bsp/bsp_lcd.c` | ILI9488 + esp_lvgl_port，LVGL 任务固定 Core 1 |
 | GUI Guider UI | 已移植 | `components/ui_custom/` | 包含自检页和 7 个业务页面 |
 | UI 事件 | 已接入核心闭环 | `components/ui_custom/events_init.c` | 接入自检、Standby、Admin、Unregistered、Confirm、Face/Finger、Success 的页面跳转和按钮桥接 |
@@ -59,6 +60,7 @@
 demo/
 ├── main/                         应用层：业务编排、任务创建、状态机
 │   ├── main.c                    app_main() 系统入口
+│   ├── app_bootstrap.c           启动编排、自检、UI 回调桥接
 │   ├── app_lvgl.c                LVGL port + LCD/touch 接入
 │   ├── app_network.c             WiFi、SNTP、MQTT、传感器数据上报
 │   ├── app_rfid.c                RFID/RC522 应用封装
@@ -96,14 +98,16 @@ main/ 应用层 -> components/ 组件层 -> ESP-IDF/第三方驱动
 
 ## 4. app_main 当前启动链路
 
-`main/main.c` 当前实际执行流程：
+`main/main.c` 当前只保留系统入口职责，实际启动编排由 `main/app_bootstrap.c` 接管：
 
 ```text
 app_main()
   ├── nvs_flash_init()
+  ├── app_bootstrap_start()
+  └── app_main 返回
+
+app_bootstrap_start()
   ├── log_system_status("nvs_inited")
-  ├── RFID/FM225/AS608 自检
-  ├── 可选调试：CLEAR_BIOMETRIC_DB_ON_BOOT 清空 FM225/AS608 模板和本地生物绑定
   ├── app_lvgl_init()
   │   ├── bsp_lcd_init()
   │   │   ├── backlight_init()
@@ -120,10 +124,15 @@ app_main()
   │   │   ├── init_scr_del_flag()
   │   │   ├── setup_scr_screen()
   │   │   └── lv_screen_load(自检页)
-  │   └── events_init(&guider_ui)
-  ├── events_set_admin_*_callback(...)
-  ├── events_set_confirm_*_callback(...)
+  │   ├── events_init(&guider_ui)
+  │   ├── events_set_admin_*_callback(...)
+  │   └── events_set_confirm_*_callback(...)
+  ├── app_network_start()
+  │   └── network_task(Core 0) 异步初始化 WiFi 并尝试连接
+  ├── RFID/FM225/AS608 自检
   ├── events_selfcheck_set_result(...)
+  │   └── Network 项等待真实 WiFi connected，超时则标记失败
+  ├── 可选调试：CLEAR_BIOMETRIC_DB_ON_BOOT 清空 FM225/AS608 模板和本地生物绑定
   ├── events_selfcheck_finish()
   │   └── 通过 LVGL timer/async 延迟进入 Standby
   ├── app_sensor_start()
@@ -135,20 +144,22 @@ app_main()
   │   ├── app_rfid_set_card_callback()
   │   ├── app_rfid_start()
   │   └── attendance_task(Core 1)
-  ├── app_network_start()
-  │   └── network_task(Core 0)
-  │       ├── app_wifi_init()
-  │       ├── app_wifi_wait_connected()
-  │       ├── app_time_sync_once()
-  │       ├── app_mqtt_start()
-  │       └── 循环读取 sensor_queue 并上报属性
+  ├── network_task(Core 0)
+  │   ├── app_wifi_init()
+  │   ├── app_wifi_wait_connected()
+  │   ├── app_time_sync_once()
+  │   ├── app_mqtt_start()
+  │   └── 循环读取 sensor_queue 并上报属性
   ├── app_perf_monitor_start() 当前按调试需要启停
-  └── app_main 返回
+  └── app_bootstrap_start 返回
 ```
 
 当前启动链路注意事项：
 
-- `main.c` 只保留系统初始化和 UI 回调桥接，具体考勤业务进入 `app_attendance.c`。
+- `main.c` 只保留 NVS 初始化和 `app_bootstrap_start()` 调用；不要继续把自检、UI 回调桥接或业务启动堆回 `main.c`。
+- `app_bootstrap.c` 是启动编排层，负责把 LVGL/UI、自检、传感器、考勤状态机和网络任务按顺序拉起。
+- 具体考勤业务仍进入 `app_attendance.c`，`app_bootstrap.c` 只做启动阶段的连线和顺序控制。
+- Network 自检不再固定成功；启动网络任务后通过 `app_wifi_is_connected()` 等待真实 WiFi/IP 状态，超时仍未连接则在自检页标记失败。
 - RFID 回调进入 `app_attendance` 队列，不能在硬件回调里直接调用 LVGL。
 - `attendance_record_init()` 挂载 `records` SPIFFS 分区；若失败，UI 成功页不阻塞，但日志必须报错。
 - `CLEAR_BIOMETRIC_DB_ON_BOOT` 当前是调试开关；正常演示前应确认是否需要关闭，避免每次上电清空已注册模板。

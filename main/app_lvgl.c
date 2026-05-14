@@ -77,7 +77,7 @@ esp_err_t app_lvgl_init(void)
         .io_handle = bsp_lcd_get_io_handle(),
         .panel_handle = bsp_lcd_get_panel_handle(),
         .buffer_size = APP_LVGL_LOGICAL_H_RES * LVGL_DRAW_BUF_LINES,
-        .double_buffer = false,
+        .double_buffer = true,
         .hres = APP_LVGL_LOGICAL_H_RES,
         .vres = APP_LVGL_LOGICAL_V_RES,
         .monochrome = false,
