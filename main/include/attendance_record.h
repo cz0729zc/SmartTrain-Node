@@ -34,6 +34,8 @@ esp_err_t attendance_record_read_recent(attendance_record_item_t *items,
                                         size_t max_items,
                                         size_t *out_count);
 
+esp_err_t attendance_record_clear(void);
+
 #ifdef __cplusplus
 }
 #endif

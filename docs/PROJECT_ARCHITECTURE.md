@@ -180,7 +180,7 @@ app_main()
 - 已接入：Unregistered 返回按钮和 3 秒自动返回，支持返回 Standby 或 Admin。
 - 已接入：Confirm 返回、人脸打卡、指纹打卡按钮。
 - 已接入：Success 返回按钮和 8 秒自动返回；页面只展示“Check-in OK”、学号、卡号、打卡时间，不在成功页标题里显示 `face` / `fingerprint`。
-- 已接入：Records 页面从 `/records/attendance.csv` 读取最近成功记录，显示时间、学号和打卡方式，返回后回到 Admin。
+- 已接入：Records 页面从 `/records/attendance.csv` 读取最近成功记录，使用 LVGL 表格显示时间、学号和打卡方式；当前读取最近 20 条，表格区域可上下滚动，支持清空本地考勤记录，返回后回到 Admin。
 
 ---
 
@@ -366,7 +366,7 @@ Standby
 | 文件路径 | `/records/attendance.csv` |
 | 写入时机 | 人脸或指纹打卡成功，且返回 ID 与当前卡片档案绑定值匹配 |
 | 当前记录范围 | 只追加成功记录；失败记录暂只打印日志 |
-| 屏幕查看 | 管理员页点击 `Records`，进入 `screen_records` 查看最近 5 条 |
+| 屏幕查看 | 管理员页点击 `Records`，进入 `screen_records` 查看最近 20 条，表格区域可上下滚动，并可点击清空按钮重置记录文件 |
 
 CSV 表头：
 
@@ -383,7 +383,7 @@ attendance record appended student_id=... card=... method=...
 attendance record read recent count=... path=/records/attendance.csv
 ```
 
-注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。当前支持在设备屏幕上查看最近 5 条成功考勤记录；若要在电脑端拿到完整 CSV，仍需要后续增加导出接口、串口 dump 命令或文件系统读取工具。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
+注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。当前支持在设备屏幕上通过 LVGL 表格查看最近 20 条成功考勤记录，并可在表格区域上下滚动；管理员可在记录页点击清空按钮重写 CSV 表头并删除已有流水。若要在电脑端拿到完整 CSV，仍需要后续增加导出接口、串口 dump 命令或文件系统读取工具。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
 
 ---
 
@@ -584,7 +584,7 @@ esp_err_t app_attendance_confirm_return(void);
 - `attendance_profile` 当前字段仍包含 `uid` 和 `name`，与“直接读卡内学号”方案不完全贴合，建议后续重命名或新增 `student_id` 主键模型。
 - 考勤事件 MQTT 上报未实现。
 - 本地考勤流水当前只记录成功打卡；失败、超时、非本人等审计流水后续可扩展。
-- `/records/attendance.csv` 已支持管理员在屏幕查看最近 5 条；若需要电脑端查看完整 CSV，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
+- `/records/attendance.csv` 已支持管理员在屏幕通过 LVGL 表格查看最近 20 条，并可上下滚动；若需要电脑端查看完整 CSV，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
 - `CLEAR_BIOMETRIC_DB_ON_BOOT` 是调试开关，正常演示前应确认是否关闭，避免上电清空 FM225/AS608 模板和本地绑定。
 - CO2 已从 UART1 调整到 UART0；启用 CO2 前仍需把 console 从 UART0 切到 USB Serial/JTAG。
 - 高号 GPIO 仍需按实际模组手册复核。

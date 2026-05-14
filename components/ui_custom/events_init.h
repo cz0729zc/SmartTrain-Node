@@ -44,7 +44,15 @@ void events_show_success(const char *student_id,
                          const char *card_id,
                          const char *check_time,
                          const char *method);
-void events_show_records(const char *records_text, size_t record_count, const char *status_text);
+#define EVENTS_RECORD_MAX_ROWS 20
+
+typedef struct {
+	char time_text[32];
+	char student_id[32];
+	char method[16];
+} events_record_row_t;
+
+void events_show_records(const events_record_row_t *rows, size_t record_count, const char *status_text);
 
 typedef enum {
 	EVENTS_RETURN_STANDBY = 0,
@@ -65,6 +73,8 @@ void events_set_admin_face_register_callback(events_admin_register_cb_t callback
 void events_set_admin_finger_register_callback(events_admin_register_cb_t callback, void *user_data);
 typedef void (*events_admin_records_cb_t)(void *user_data);
 void events_set_admin_records_callback(events_admin_records_cb_t callback, void *user_data);
+typedef void (*events_records_clear_cb_t)(void *user_data);
+void events_set_records_clear_callback(events_records_clear_cb_t callback, void *user_data);
 typedef void (*events_confirm_action_cb_t)(void *user_data);
 void events_set_confirm_return_callback(events_confirm_action_cb_t callback, void *user_data);
 void events_set_confirm_face_check_callback(events_confirm_action_cb_t callback, void *user_data);

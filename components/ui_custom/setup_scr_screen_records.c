@@ -58,17 +58,9 @@ void setup_scr_screen_records(lv_ui *ui)
     lv_obj_set_style_text_align(ui->screen_records_label_wifi_text, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui->screen_records_label_wifi_text, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui->screen_records_label_title = lv_label_create(ui->screen_records);
-    lv_obj_set_pos(ui->screen_records_label_title, 0, 42);
-    lv_obj_set_size(ui->screen_records_label_title, 480, 32);
-    lv_label_set_text(ui->screen_records_label_title, "Attendance Records");
-    lv_obj_set_style_text_color(ui->screen_records_label_title, lv_color_hex(0x1F1F1F), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_records_label_title, &lv_font_montserratMedium_24, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_records_label_title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-
     ui->screen_records_cont_body = lv_obj_create(ui->screen_records);
-    lv_obj_set_pos(ui->screen_records_cont_body, 20, 84);
-    lv_obj_set_size(ui->screen_records_cont_body, 440, 166);
+    lv_obj_set_pos(ui->screen_records_cont_body, 10, 42);
+    lv_obj_set_size(ui->screen_records_cont_body, 460, 238);
     lv_obj_set_scrollbar_mode(ui->screen_records_cont_body, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_border_width(ui->screen_records_cont_body, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui->screen_records_cont_body, lv_color_hex(0xD9D9D9), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -77,23 +69,29 @@ void setup_scr_screen_records(lv_ui *ui)
     lv_obj_set_style_bg_color(ui->screen_records_cont_body, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_all(ui->screen_records_cont_body, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui->screen_records_label_body = lv_label_create(ui->screen_records_cont_body);
-    lv_obj_set_pos(ui->screen_records_label_body, 12, 8);
-    lv_obj_set_size(ui->screen_records_label_body, 416, 150);
-    lv_label_set_text(ui->screen_records_label_body, "No records yet");
-    lv_label_set_long_mode(ui->screen_records_label_body, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(ui->screen_records_label_body, lv_color_hex(0x262626), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_records_label_body, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_line_space(ui->screen_records_label_body, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui->screen_records_label_status = lv_label_create(ui->screen_records);
-    lv_obj_set_pos(ui->screen_records_label_status, 20, 256);
-    lv_obj_set_size(ui->screen_records_label_status, 440, 30);
-    lv_label_set_text(ui->screen_records_label_status, "/records/attendance.csv");
-    lv_obj_set_style_text_color(ui->screen_records_label_status, lv_color_hex(0x595959), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_records_label_status, &lv_font_montserratMedium_12, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui->screen_records_label_status, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_records_label_status, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui->screen_records_table = lv_table_create(ui->screen_records_cont_body);
+    lv_obj_set_pos(ui->screen_records_table, 0, 0);
+    lv_obj_set_size(ui->screen_records_table, 460, 238);
+    lv_obj_set_scrollbar_mode(ui->screen_records_table, LV_SCROLLBAR_MODE_AUTO);
+    lv_table_set_column_count(ui->screen_records_table, 4);
+    lv_table_set_row_count(ui->screen_records_table, 1);
+    lv_table_set_column_width(ui->screen_records_table, 0, 50);
+    lv_table_set_column_width(ui->screen_records_table, 1, 120);
+    lv_table_set_column_width(ui->screen_records_table, 2, 160);
+    lv_table_set_column_width(ui->screen_records_table, 3, 130);
+    lv_table_set_cell_value(ui->screen_records_table, 0, 0, "No");
+    lv_table_set_cell_value(ui->screen_records_table, 0, 1, "Time");
+    lv_table_set_cell_value(ui->screen_records_table, 0, 2, "ID");
+    lv_table_set_cell_value(ui->screen_records_table, 0, 3, "Mode");
+    lv_obj_set_style_text_color(ui->screen_records_table, lv_color_hex(0x262626), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_records_table, lv_color_hex(0x262626), LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_records_table, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_records_table, &lv_font_montserratMedium_16, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_records_table, LV_TEXT_ALIGN_CENTER, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_records_table, 6, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_records_table, 6, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_records_table, 4, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_records_table, 4, LV_PART_ITEMS | LV_STATE_DEFAULT);
 
     ui->screen_records_control_bar = lv_obj_create(ui->screen_records);
     lv_obj_set_pos(ui->screen_records_control_bar, 0, 290);
@@ -119,6 +117,21 @@ void setup_scr_screen_records(lv_ui *ui)
     lv_obj_set_style_text_color(ui->screen_records_btn_return_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui->screen_records_btn_return_label, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_center(ui->screen_records_btn_return_label);
+
+    ui->screen_records_btn_clear = lv_button_create(ui->screen_records_control_bar);
+    lv_obj_set_pos(ui->screen_records_btn_clear, 350, 0);
+    lv_obj_set_size(ui->screen_records_btn_clear, 100, 30);
+    lv_obj_clear_flag(ui->screen_records_btn_clear, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(ui->screen_records_btn_clear, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_records_btn_clear, lv_color_hex(0xCF1322), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_records_btn_clear, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_records_btn_clear, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui->screen_records_btn_clear_label = lv_label_create(ui->screen_records_btn_clear);
+    lv_label_set_text(ui->screen_records_btn_clear_label, "Clear");
+    lv_obj_set_style_text_color(ui->screen_records_btn_clear_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_records_btn_clear_label, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_center(ui->screen_records_btn_clear_label);
 
     lv_obj_update_layout(ui->screen_records);
 }

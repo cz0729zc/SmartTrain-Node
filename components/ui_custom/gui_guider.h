@@ -162,13 +162,13 @@ typedef struct
 	lv_obj_t *screen_records_cont_status;
 	lv_obj_t *screen_records_label_wifi_icon;
 	lv_obj_t *screen_records_label_wifi_text;
-	lv_obj_t *screen_records_label_title;
 	lv_obj_t *screen_records_cont_body;
-	lv_obj_t *screen_records_label_body;
-	lv_obj_t *screen_records_label_status;
+	lv_obj_t *screen_records_table;
 	lv_obj_t *screen_records_control_bar;
 	lv_obj_t *screen_records_btn_return;
 	lv_obj_t *screen_records_btn_return_label;
+	lv_obj_t *screen_records_btn_clear;
+	lv_obj_t *screen_records_btn_clear_label;
 }lv_ui;
 
 typedef void (*ui_setup_scr_t)(lv_ui * ui);

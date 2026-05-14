@@ -34,7 +34,7 @@ static const char *TAG = "app_attendance";
 #define VERIFY_START_DELAY_MS 2000
 #define VERIFY_RESULT_HOLD_MS 4000
 #define VERIFY_TIMEOUT_S 15
-#define ATTENDANCE_RECORD_DISPLAY_COUNT 5
+#define ATTENDANCE_RECORD_DISPLAY_COUNT EVENTS_RECORD_MAX_ROWS
 
 typedef enum {
     ATTENDANCE_EVENT_CARD = 0,
@@ -42,6 +42,7 @@ typedef enum {
     ATTENDANCE_EVENT_REGISTER_FACE,
     ATTENDANCE_EVENT_REGISTER_FINGER,
     ATTENDANCE_EVENT_SHOW_RECORDS,
+    ATTENDANCE_EVENT_CLEAR_RECORDS,
     ATTENDANCE_EVENT_EXIT_ADMIN_MODE,
     ATTENDANCE_EVENT_VERIFY_FACE,
     ATTENDANCE_EVENT_VERIFY_FINGER,
@@ -735,7 +736,7 @@ static void attendance_register_finger_selected(void)
 static void attendance_show_records(void)
 {
     static attendance_record_item_t items[ATTENDANCE_RECORD_DISPLAY_COUNT];
-    static char text[512];
+    static events_record_row_t rows[ATTENDANCE_RECORD_DISPLAY_COUNT];
     static char status[80];
     size_t count = 0;
 
@@ -744,7 +745,7 @@ static void attendance_show_records(void)
              (unsigned)uxTaskGetStackHighWaterMark(NULL));
 
     memset(items, 0, sizeof(items));
-    memset(text, 0, sizeof(text));
+    memset(rows, 0, sizeof(rows));
     memset(status, 0, sizeof(status));
 
     esp_err_t ret = attendance_record_read_recent(items,
@@ -753,36 +754,57 @@ static void attendance_show_records(void)
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "read attendance records failed: %s", esp_err_to_name(ret));
         snprintf(status, sizeof(status), "Read failed: %s", esp_err_to_name(ret));
-        events_show_records("No records available", 0, status);
+        events_show_records(NULL, 0, status);
         return;
     }
 
     if (count == 0) {
-        events_show_records("No records yet", 0, "/records/attendance.csv");
+        events_show_records(NULL, 0, "No records yet");
         return;
     }
 
-    size_t pos = 0;
     for (size_t i = 0; i < count; ++i) {
         const attendance_record_item_t *item = &items[i];
-        int written = snprintf(text + pos,
-                               sizeof(text) - pos,
-                               "%u. %s  %s  %s\n",
-                               (unsigned)(i + 1),
-                               item->time_text[0] ? item->time_text : "--:--:--",
-                               item->student_id[0] ? item->student_id : "-",
-                               item->method[0] ? item->method : "ok");
-        if (written <= 0 || (size_t)written >= sizeof(text) - pos) {
-            text[sizeof(text) - 1] = '\0';
-            break;
+        strlcpy(rows[i].time_text,
+                item->time_text[0] ? item->time_text : "--:--:--",
+                sizeof(rows[i].time_text));
+        strlcpy(rows[i].student_id,
+                item->student_id[0] ? item->student_id : "-",
+                sizeof(rows[i].student_id));
+        if (strcmp(item->method, "face") == 0) {
+            strlcpy(rows[i].method, "Face", sizeof(rows[i].method));
+        } else if (strcmp(item->method, "fingerprint") == 0) {
+            strlcpy(rows[i].method, "Finger", sizeof(rows[i].method));
+        } else {
+            strlcpy(rows[i].method,
+                    item->method[0] ? item->method : "-",
+                    sizeof(rows[i].method));
         }
-        pos += (size_t)written;
     }
 
-    snprintf(status, sizeof(status), "Recent %u records from /records/attendance.csv", (unsigned)count);
-    events_show_records(text, count, status);
+    snprintf(status, sizeof(status), "Records loaded: %u", (unsigned)count);
+    events_show_records(rows, count, status);
     ESP_LOGI(TAG,
              "show records end stack_hwm=%u",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+}
+
+static void attendance_clear_records(void)
+{
+    ESP_LOGI(TAG,
+             "clear records begin stack_hwm=%u",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+
+    esp_err_t ret = attendance_record_clear();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "clear attendance records failed: %s", esp_err_to_name(ret));
+        events_show_records(NULL, 0, "Clear failed");
+        return;
+    }
+
+    events_show_records(NULL, 0, "Records cleared");
+    ESP_LOGI(TAG,
+             "clear records end stack_hwm=%u",
              (unsigned)uxTaskGetStackHighWaterMark(NULL));
 }
 
@@ -900,6 +922,8 @@ static void attendance_task(void *arg)
                 attendance_register_finger_selected();
             } else if (event.type == ATTENDANCE_EVENT_SHOW_RECORDS) {
                 attendance_show_records();
+            } else if (event.type == ATTENDANCE_EVENT_CLEAR_RECORDS) {
+                attendance_clear_records();
             } else if (event.type == ATTENDANCE_EVENT_EXIT_ADMIN_MODE) {
                 attendance_exit_admin_mode();
             } else if (event.type == ATTENDANCE_EVENT_VERIFY_FACE) {
@@ -1019,6 +1043,11 @@ esp_err_t app_attendance_register_fingerprint_selected(void)
 esp_err_t app_attendance_show_records(void)
 {
     return attendance_send_simple_event(ATTENDANCE_EVENT_SHOW_RECORDS);
+}
+
+esp_err_t app_attendance_clear_records(void)
+{
+    return attendance_send_simple_event(ATTENDANCE_EVENT_CLEAR_RECORDS);
 }
 
 esp_err_t app_attendance_exit_card_write_mode(void)

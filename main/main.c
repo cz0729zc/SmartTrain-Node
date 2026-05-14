@@ -327,6 +327,15 @@ static void admin_records_cb(void *user_data)
     }
 }
 
+static void records_clear_cb(void *user_data)
+{
+    (void)user_data;
+    esp_err_t ret = app_attendance_clear_records();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "queue clear records failed: %s", esp_err_to_name(ret));
+    }
+}
+
 static void confirm_return_cb(void *user_data)
 {
     (void)user_data;
@@ -491,6 +500,7 @@ void app_main(void)
     events_set_admin_face_register_callback(admin_face_register_cb, NULL);
     events_set_admin_finger_register_callback(admin_finger_register_cb, NULL);
     events_set_admin_records_callback(admin_records_cb, NULL);
+    events_set_records_clear_callback(records_clear_cb, NULL);
     events_set_confirm_return_callback(confirm_return_cb, NULL);
     events_set_confirm_face_check_callback(confirm_face_check_cb, NULL);
     events_set_confirm_finger_check_callback(confirm_finger_check_cb, NULL);

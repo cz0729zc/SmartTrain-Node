@@ -232,3 +232,26 @@ esp_err_t attendance_record_read_recent(attendance_record_item_t *items,
              ATTENDANCE_RECORD_PATH);
     return ESP_OK;
 }
+
+esp_err_t attendance_record_clear(void)
+{
+    if (!s_record_inited) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    FILE *fp = fopen(ATTENDANCE_RECORD_PATH, "w");
+    if (fp == NULL) {
+        ESP_LOGE(TAG, "open %s clear failed", ATTENDANCE_RECORD_PATH);
+        return ESP_FAIL;
+    }
+
+    if (fputs(ATTENDANCE_RECORD_HEADER, fp) < 0) {
+        fclose(fp);
+        ESP_LOGE(TAG, "rewrite attendance record header failed");
+        return ESP_FAIL;
+    }
+
+    fclose(fp);
+    ESP_LOGI(TAG, "attendance records cleared path=%s", ATTENDANCE_RECORD_PATH);
+    return ESP_OK;
+}
