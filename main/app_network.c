@@ -3,6 +3,7 @@
 #include "app_perf_monitor.h"
 #include "app_mqtt.h"
 #include "app_time.h"
+#include "attendance_profile.h"
 #include "attendance_record.h"
 #include "sensor_data.h"
 #include "freertos/FreeRTOS.h"
@@ -181,6 +182,15 @@ static int publish_attendance_event(const attendance_record_item_t *item)
     json_escape_string(item->result[0] ? item->result : "ok", result, sizeof(result));
     json_escape_string(item->reason[0] ? item->reason : "matched", reason, sizeof(reason));
 
+    uint16_t face_user_id = item->face_user_id;
+    uint16_t finger_page_id = item->finger_page_id;
+    if (face_user_id == ATTENDANCE_FACE_ID_UNBOUND) {
+        face_user_id = 0;
+    }
+    if (finger_page_id == ATTENDANCE_FINGER_ID_UNBOUND) {
+        finger_page_id = 0;
+    }
+
     char json_buf[512];
     int len = snprintf(json_buf,
                        sizeof(json_buf),
@@ -204,8 +214,8 @@ static int publish_attendance_event(const attendance_record_item_t *item)
                        method,
                        result,
                        reason,
-                       (unsigned)item->face_user_id,
-                       (unsigned)item->finger_page_id,
+                       (unsigned)face_user_id,
+                       (unsigned)finger_page_id,
                        ts_ms);
 
     if (len < 0 || len >= (int)sizeof(json_buf)) {
@@ -261,7 +271,7 @@ static void process_attendance_upload_queue(void)
     }
 
     int msg_id = publish_attendance_event(&item);
-    if (msg_id > 0) {
+    if (msg_id >= 0) {
         s_attendance_upload_inflight = true;
         s_attendance_upload_sent_tick = xTaskGetTickCount();
         ESP_LOGI(TAG, "attendance event upload in-flight msg_id=%d", msg_id);
