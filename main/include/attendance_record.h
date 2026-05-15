@@ -13,11 +13,15 @@ extern "C" {
 #define ATTENDANCE_RECORD_MAX_TEXT_LEN 32
 
 typedef struct {
+    time_t ts;
     char time_text[ATTENDANCE_RECORD_MAX_TEXT_LEN];
     char student_id[ATTENDANCE_RECORD_MAX_TEXT_LEN];
     char card_uid[ATTENDANCE_RECORD_MAX_TEXT_LEN];
     char method[ATTENDANCE_RECORD_MAX_TEXT_LEN];
     char result[ATTENDANCE_RECORD_MAX_TEXT_LEN];
+    char reason[ATTENDANCE_RECORD_MAX_TEXT_LEN];
+    uint16_t face_user_id;
+    uint16_t finger_page_id;
 } attendance_record_item_t;
 
 esp_err_t attendance_record_init(void);
@@ -35,6 +39,10 @@ esp_err_t attendance_record_read_recent(attendance_record_item_t *items,
                                         size_t *out_count);
 
 esp_err_t attendance_record_clear(void);
+
+esp_err_t attendance_record_pending_peek(attendance_record_item_t *item);
+
+esp_err_t attendance_record_pending_drop_first(void);
 
 #ifdef __cplusplus
 }

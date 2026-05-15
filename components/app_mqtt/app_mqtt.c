@@ -17,6 +17,8 @@ static volatile bool s_mqtt_connected = false;
 /* MQTT 事件回调 */
 static app_mqtt_event_cb_t s_event_cb = NULL;
 static void *s_event_cb_arg = NULL;
+static app_mqtt_data_cb_t s_data_cb = NULL;
+static void *s_data_cb_arg = NULL;
 
 /**
  * @brief 打印非零错误码
@@ -70,7 +72,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "收到消息:");
         ESP_LOGI(TAG, "  主题: %.*s", event->topic_len, event->topic);
         ESP_LOGI(TAG, "  数据: %.*s", event->data_len, event->data);
-        // TODO: 可在此处添加回调函数，将数据传递给其他模块处理
+        if (s_data_cb != NULL) {
+            s_data_cb(event->topic,
+                      event->topic_len,
+                      event->data,
+                      event->data_len,
+                      s_data_cb_arg);
+        }
         break;
 
     case MQTT_EVENT_ERROR:
@@ -223,4 +231,10 @@ void app_mqtt_set_event_callback(app_mqtt_event_cb_t callback, void *arg)
 {
     s_event_cb = callback;
     s_event_cb_arg = arg;
+}
+
+void app_mqtt_set_data_callback(app_mqtt_data_cb_t callback, void *arg)
+{
+    s_data_cb = callback;
+    s_data_cb_arg = arg;
 }

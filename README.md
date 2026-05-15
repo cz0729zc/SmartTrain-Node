@@ -1,117 +1,253 @@
-# 基于物联网的企业培训管理平台 - 智能终端固件 (Smart Training Terminal)
+# 基于物联网的企业培训管理平台 - 智能终端固件
 
-## 1. 项目简介 (Project Overview)
+这是一个运行在 ESP32-S3 上的企业线下培训考勤终端。它负责现场刷卡、人员身份核验、考勤记录、本地留档和 MQTT 上报。
 
-本项目是“基于物联网的企业培训管理平台”的边端智能终端固件。系统围绕“签到—学习—考核—评价”全流程，构建了一套完整的数据流转模型。该终端主要负责现场的人员身份核验、环境感知以及数据上报，旨在解决传统培训场景中考勤难、环境不可控等问题。
+当前工程已经接入 LVGL/GUI Guider 界面、RFID、FM225 人脸模块、AS608 指纹模块、WiFi、MQTT/OneNET、DHT11 环境采集和本地 SPIFFS 记录。核心业务闭环是：
 
-硬件核心采用 **ESP32-S3**，通过模块化设计集成多种传感器与外设，利用并发任务架构处理采集、核验、通信、存储与交互。
-
----
-
-## 2. 核心功能 (Key Features)
-
-### 2.1 业务流程
-- **多模态身份核验**：支持人脸识别（UART模组）、指纹识别（UART/SPI）、刷卡（I2C/SPI）。
-- **全流程管理**：覆盖到场签到、学习过程监测、考核记录及评价反馈。
-- **状态机控制**：严格的状态流转设计，确保业务逻辑的一致性。
-
-### 2.2 数据可靠性 & 安全性
-- **断网续传**：支持本地 SD 卡缓存数据，网络恢复后自动重传，保证数据零丢失。
-- **掉电保护**：关键数据实时写入非易失性存储。
-- **安全通信**：MQTT 启用 TLS 加密与 QoS 1 机制，确保数据传输安全可靠。
-- **隐私保护**：边端仅存储加密后的特征模板，云端仅记录匿名 ID，符合隐私合规要求。
-
-### 2.3 环境感知
-- **实时监测**：集成 CO2 传感器与温湿度传感器，实时监控培训环境舒适度。
-- **异常告警**：本地声光报警（蜂鸣器/屏幕）及云端推送（CO2 超限、缺勤等）。
-
-### 2.4 设备管理
-- **配网方式**：支持 SoftAP 热点配网或串口命令行配网。
-- **远程运维**：支持 OTA 固件升级、远程配置下发、自检日志上报。
-- **设备遗嘱 (LWT)**：利用 MQTT 遗嘱机制管理设备上下线状态。
-
----
-
-## 3. 硬件架构 (Hardware Architecture)
-
-- **主控芯片**：Espressif ESP32-S3 (双核 Xtensa® LX7, AI 加速)
-- **外设接口**：
-    - **UART**: 摄像头模组 / 人脸识别模组
-    - **UART/SPI**: 指纹传感器
-    - **I2C/SPI**: 刷卡模块 (NFC/RFID)
-    - **I2C**: CO2 传感器, 温湿度传感器, OLED/LCD 显示屏
-    - **GPIO**: 蜂鸣器, 按键, LED 指示灯
-    - **SDIO/SPI**: SD 卡 (数据存储)
-- **电源管理**：抗干扰设计，静电防护，RTC 独立供电维持离线时钟。
-
----
-
-## 4. 软件架构 (Software Architecture)
-
-本项目基于 **ESP-IDF** 框架开发，采用模块化、分层设计。
-
-### 4.1 目录结构
 ```text
-Smart_Training_Terminal/
-├── components/                 // 功能组件
-│   ├── app_wifi/               // WiFi 连接与配网
-│   ├── bsp/                    // 板级支持包 (GPIO, I2C, SPI 初始化)
-│   ├── common/                 // 通用工具 (队列, 数据结构, 宏)
-│   ├── drivers/                // 外设驱动 (传感器, 屏幕, 指纹)
-│   ├── middleware/             // 中间件 (MQTT, 数据存储, 协议解析) - 规划中
-│   └── ui/                     // 用户交互逻辑 - 规划中
-├── main/                       // 业务主逻辑
-│   ├── main.c                  // 系统入口与任务调度
-│   └── app_controller.c        // 核心状态机
-├── docs/                       // 文档
-└── tools/                      // 辅助脚本
+课前建档/发卡 -> 管理员注册人脸或指纹 -> 学员刷卡 -> 人脸/指纹确认本人 -> 本地记录 -> MQTT 上报
 ```
 
-### 4.2 关键技术点
-- **并发任务架构**：独立任务处理采集、核验、网络通信、本地存储与 UI 交互。
-- **消息队列**：任务间通过 FreeRTOS Queue 进行低耦合通信。
-- **MQTT 主题规划**：
-    - `telemetry`: 传感器数据
-    - `attendance`: 考勤记录 (UUID + 时间戳)
-    - `events`: 告警事件
-    - `config`: 远程配置下发
+更完整的工程说明在 [docs/PROJECT_ARCHITECTURE.md](docs/PROJECT_ARCHITECTURE.md)。开发前建议先看那份文档，再看 `main/app_bootstrap.c` 和 `main/app_attendance.c`。
 
 ---
 
-## 5. 快速开始 (Getting Started)
+## 当前功能
 
-### 5.1 环境准备
-- 安装 [ESP-IDF](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32s3/get-started/index.html) 开发环境 (VS Code 插件推荐)。
-- 目标芯片设置为 `esp32s3`。
+- 开机自检：RFID、人脸、指纹、网络状态会在自检页显示。
+- Standby 待机页：显示真实时间、WiFi 状态和环境数据，等待刷卡。
+- 管理员流程：刷管理员卡进入管理员页，可选择学员并注册人脸或指纹。
+- 写卡模式：管理员页可进入写卡模式，把预置学员的学号写入对应 IC 卡。
+- 日常考勤：学员刷卡后进入确认页，选择人脸或指纹打卡。
+- 成功记录：打卡成功后写入 `/records/attendance.csv`，成功页停留 8 秒。
+- 记录查看：管理员页可进入 Records 页面，查看最近 20 条本地成功考勤记录，并支持清空。
+- 云端上报：考勤成功事件通过 OneNET MQTT `thing/event/post` 上报。
+- 断网补传：离线时先写本地 pending 队列，MQTT 恢复后按顺序补传。
 
-### 5.2 编译与烧录
-1. **配置项目**：
-   ```bash
-   idf.py menuconfig
-   # 配置 WiFi SSID/Password (或使用配网功能)
-   # 配置 MQTT Broker 地址
-   ```
-
-2. **编译**：
-   ```bash
-   idf.py build
-   ```
-
-3. **烧录**：
-   ```bash
-   idf.py -p PORT flash monitor
-   ```
+当前只记录成功打卡流水。失败、超时、非本人等审计事件还没有写入 CSV，也没有上报到云端。
 
 ---
 
-## 6. 开发规范
-请参考 [ESP32 嵌入式软件开发规范手册](./ESP32_Development_Standards.md)。
-主要遵循：
-- **模块化**：功能封装在 `components/` 下。
-- **Git 规范**：使用 Conventional Commits 提交代码。
-- **代码风格**：遵循 ESP-IDF 编程指南。
+## 硬件与框架
+
+| 项目 | 当前配置 |
+| --- | --- |
+| 主控 | ESP32-S3 |
+| 框架 | ESP-IDF v5.4.3 |
+| 图形 | LVGL 9.x + GUI Guider |
+| 屏幕 | ILI9488 SPI LCD，逻辑横屏 480x320 |
+| 触摸 | XPT2046 SPI Touch |
+| 刷卡 | RC522 I2C |
+| 人脸 | FM225，UART1 |
+| 指纹 | AS608，UART2 |
+| 网络 | WiFi STA + MQTT/OneNET |
+| 本地档案 | NVS |
+| 考勤流水 | `records` SPIFFS 分区 CSV |
 
 ---
 
-## 7. 许可证 (License)
+## 目录结构
+
+```text
+demo/
+├── main/
+│   ├── main.c                    系统入口，只做 NVS 初始化和启动编排入口
+│   ├── app_bootstrap.c           启动编排、自检、UI 回调桥接
+│   ├── app_attendance.c          考勤业务状态机
+│   ├── attendance_profile.c      学员档案和生物特征绑定，保存到 NVS
+│   ├── attendance_record.c       本地考勤 CSV 和 MQTT 补传队列
+│   ├── app_network.c             WiFi、SNTP、MQTT、传感器上报、考勤事件补传
+│   ├── app_rfid.c                RC522 应用封装
+│   ├── app_face.c                FM225 应用封装
+│   ├── app_fingerprint.c         AS608 应用封装
+│   └── include/                  main 层头文件
+├── components/
+│   ├── ui_custom/                GUI Guider 生成界面和 UI 事件桥接
+│   ├── bsp/                      LCD、Touch、板级引脚
+│   ├── app_wifi/                 WiFi 组件
+│   ├── app_mqtt/                 MQTT 组件
+│   ├── common/                   通用队列
+│   └── drivers/                  DHT、CO2、FM225、AS608 等底层驱动
+├── docs/
+│   ├── PROJECT_ARCHITECTURE.md   当前工程结构和业务闭环说明
+│   ├── attendance_profiles_seed.csv
+│   └── WIFI_LCD_LVGL_RESET_INVESTIGATION.md
+├── partitions.csv
+└── sdkconfig
+```
+
+依赖方向保持单向：
+
+```text
+main/ 应用层 -> components/ 组件层 -> ESP-IDF/第三方驱动
+```
+
+业务状态机放在 `main/app_attendance.c`。`components/ui_custom/events_init.c` 只负责 UI 控件事件桥接，不承载业务判断。
+
+---
+
+## 启动链路
+
+当前 `main.c` 已经简化，真正的启动顺序在 `app_bootstrap_start()` 里：
+
+```text
+app_main()
+  ├── nvs_flash_init()
+  └── app_bootstrap_start()
+
+app_bootstrap_start()
+  ├── 初始化 LVGL、LCD、Touch
+  ├── 加载 GUI Guider UI
+  ├── 绑定 UI 回调
+  ├── 启动网络任务
+  ├── 执行 RFID/FM225/AS608/Network 自检
+  ├── 进入 Standby
+  ├── 启动 DHT11 传感器任务
+  ├── 启动考勤状态机
+  └── 按调试需要启动性能监控
+```
+
+RFID 回调不会直接操作 LVGL，而是把刷卡事件投递给 `attendance_task`。所有页面跳转和控件更新都通过 UI 事件层进入 LVGL 安全上下文。
+
+---
+
+## 业务流程
+
+### 管理员注册
+
+```text
+Standby
+  └── 刷管理员卡 -> screen_admin
+      └── 刷学员卡
+          ├── 已在本地档案中 -> 选择人脸注册或指纹注册
+          └── 未知卡 -> screen_unregistered，3 秒后回 Admin
+```
+
+注册成功后，系统会把 FM225 返回的人脸 ID 或 AS608 指纹页号绑定到对应学员档案。
+
+### 日常打卡
+
+```text
+Standby
+  └── 刷学员卡
+      ├── 未知卡或未注册 -> screen_unregistered
+      └── 已注册 -> screen_Confirm
+          ├── 人脸打卡 -> ID 匹配 -> screen_success
+          └── 指纹打卡 -> 页号匹配 -> screen_success
+```
+
+打卡成功后，系统会先写本地 CSV，再尝试通过 MQTT 上传。网络不可用时不会丢记录。
+
+---
+
+## 本地数据
+
+| 数据 | 保存位置 | 说明 |
+| --- | --- | --- |
+| 学员档案 | NVS | 保存学号、卡 UID、人脸 ID、指纹页号 |
+| 成功考勤流水 | `/records/attendance.csv` | SPIFFS 运行时文件，不在工程目录里 |
+| 待上传队列 | `/records/attendance_upload_pending.csv` | MQTT 未确认前保留 |
+| 演示名单源 | `docs/attendance_profiles_seed.csv` | 给人看的静态名单，不是设备运行时权威数据 |
+
+考勤 CSV 表头：
+
+```csv
+ts,time,student_id,card_uid,method,result,reason,face_user_id,finger_page_id
+```
+
+设备运行日志会打印记录写入、读取、上传和补传确认状态。屏幕端可以在管理员页进入 Records 页面查看最近记录；如果要在电脑端导出完整 CSV，后续还需要加串口 dump、文件系统读取或专门导出接口。
+
+---
+
+## MQTT 上报
+
+环境数据走 OneNET 属性上报，考勤成功记录走事件上报。
+
+考勤事件 Topic：
+
+```text
+$sys/{pid}/{device-name}/thing/event/post
+$sys/{pid}/{device-name}/thing/event/post/reply
+```
+
+当前事件标识符：
+
+```text
+attendance_event
+```
+
+事件字段与本地 CSV 对齐：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `ts` | int64 | Unix 秒级时间戳 |
+| `time` | string | 本地时间字符串 |
+| `student_id` | string | 学号 |
+| `card_uid` | string | RFID 物理 UID |
+| `method` | string | `face` 或 `fingerprint` |
+| `result` | string | 当前成功记录为 `ok` |
+| `reason` | string | 当前成功记录为 `matched` |
+| `face_user_id` | int | 人脸 ID |
+| `finger_page_id` | int | 指纹页号 |
+
+补传规则很简单：打卡成功先写本地，再写 pending 队列；MQTT connected 后只发送队首一条；收到 event reply 且 `code=200` 后，才删除这条 pending 记录。
+
+---
+
+## 硬件引脚
+
+当前引脚集中在 `components/bsp/include/bsp_pin_defs.h`。
+
+| 外设 | 信号 | GPIO |
+| --- | --- | --- |
+| LCD/Touch SPI2 | MOSI | GPIO38 |
+| LCD/Touch SPI2 | MISO | GPIO41 |
+| LCD/Touch SPI2 | CLK | GPIO39 |
+| LCD | CS | GPIO7 |
+| LCD | DC | GPIO15 |
+| LCD | RST | GPIO18 |
+| LCD | Backlight | GPIO40 |
+| Touch | CS | GPIO42 |
+| RFID RC522 I2C | SDA | GPIO20 |
+| RFID RC522 I2C | SCL | GPIO21 |
+| FM225 | UART1 TX/RX | GPIO11/GPIO10 |
+| AS608 | UART2 TX/RX | GPIO17/GPIO16 |
+| DHT11 | DATA | GPIO6 |
+| CO2 | UART0 TX/RX | GPIO4/GPIO5 |
+
+CO2 当前预留 UART0。如果要启用 CO2，需要先把 ESP-IDF console 从 UART0 切到 USB Serial/JTAG，否则会和日志串口冲突。
+
+---
+
+## 编译与烧录
+
+准备 ESP-IDF 环境后执行：
+
+```bash
+idf.py set-target esp32s3
+idf.py menuconfig
+idf.py build
+idf.py -p PORT flash monitor
+```
+
+常用配置项：
+
+- WiFi SSID 和密码。
+- MQTT/OneNET 产品 ID、设备名、设备 ID、Broker 地址。
+- LVGL 内存配置，当前建议使用 C library malloc。
+- 调试开关 `CLEAR_BIOMETRIC_DB_ON_BOOT`，正常演示前要确认是否关闭。
+
+---
+
+## 调试提示
+
+- 如果 UI 和 WiFi 同时运行出现复位，先看 [docs/WIFI_LCD_LVGL_RESET_INVESTIGATION.md](docs/WIFI_LCD_LVGL_RESET_INVESTIGATION.md)，再看任务栈水位和 LVGL 调用路径。
+- 如果刷卡没反应，先确认 RC522 I2C 地址、SDA/SCL 接线和 `app_rfid` 启动日志。
+- 如果管理员页或记录页文字显示方框，优先检查 `components/ui_custom/events_init.c` 中使用的字体是否包含对应汉字。
+- 如果考勤记录没有上云，先看 `/records/attendance_upload_pending.csv` 是否有待上传记录，再看 event reply 是否返回 `code=200`。
+
+---
+
+## 许可证
+
 Apache-2.0

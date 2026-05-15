@@ -23,6 +23,12 @@ typedef enum {
  */
 typedef void (*app_mqtt_event_cb_t)(app_mqtt_event_t event, void *arg);
 
+typedef void (*app_mqtt_data_cb_t)(const char *topic,
+                                   int topic_len,
+                                   const char *data,
+                                   int data_len,
+                                   void *arg);
+
 /**
  * @brief 设置 MQTT 事件回调
  *
@@ -33,6 +39,8 @@ typedef void (*app_mqtt_event_cb_t)(app_mqtt_event_t event, void *arg);
  * @param arg 传递给回调的用户参数
  */
 void app_mqtt_set_event_callback(app_mqtt_event_cb_t callback, void *arg);
+
+void app_mqtt_set_data_callback(app_mqtt_data_cb_t callback, void *arg);
 
 /**
  * @brief 初始化并启动 MQTT 客户端

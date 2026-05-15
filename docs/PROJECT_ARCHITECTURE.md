@@ -38,7 +38,7 @@
 | UI 事件 | 已接入核心闭环 | `components/ui_custom/events_init.c` | 接入自检、Standby、Admin、Unregistered、Confirm、Face/Finger、Success 的页面跳转和按钮桥接 |
 | BSP LCD/Touch | 已接入 | `components/bsp/` | SPI LCD 与 XPT2046 触摸共用 SPI2 |
 | WiFi | 已接入 | `components/app_wifi/` | STA 连接、重试、EventGroup 同步 |
-| MQTT | 已接入 | `components/app_mqtt/`, `main/app_network.c` | 当前上报传感器属性；考勤事件上报待接入 |
+| MQTT | 已接入 | `components/app_mqtt/`, `main/app_network.c` | 上报传感器属性；考勤成功事件使用 OneNET event/post 上报，并支持断网 pending 队列补传 |
 | 时间同步 | 已接入 | `main/app_time.c` | WiFi 后 SNTP 单次对时 |
 | 传感器队列 | 已接入 | `main/sensor_data.c`, `components/common/data_queue.c` | 传感器数据通过队列给网络任务 |
 | DHT11 | 已启动 | `main/app_sensor.c`, `components/drivers/driver_dht.c` | GPIO6，启动后通过队列交给网络任务上报 |
@@ -47,10 +47,10 @@
 | 人脸 | 已接入注册/打卡 | `main/app_face.c`, `components/drivers/driver_fm225.c` | 支持管理员注册、日常单次识别，并与 `attendance_profile` 的 `face_user_id` 匹配 |
 | 指纹 | 已接入注册/打卡 | `main/app_fingerprint.c`, `components/drivers/driver_as608.c` | 支持管理员注册、日常识别，并与 `attendance_profile` 的 `finger_page_id` 匹配 |
 | 学员档案 | 已初始化 | `main/attendance_profile.c` | NVS 中保存学号、卡 UID、人脸 ID、指纹页号映射；启动时预置演示学员 |
-| 考勤流水 | 已接入成功记录 | `main/attendance_record.c` | 挂载 `records` SPIFFS 分区，成功打卡追加 `/records/attendance.csv` |
+| 考勤流水 | 已接入成功记录与补传队列 | `main/attendance_record.c` | 挂载 `records` SPIFFS 分区，成功打卡追加 `/records/attendance.csv`，并写入 `/records/attendance_upload_pending.csv` 等待 MQTT 确认 |
 | 性能监控 | 已接入 | `main/app_perf_monitor.c` | 输出任务运行时间、CPU 占用、栈水位，关注 WiFi/LVGL/UI |
 
-重要现状：核心本地闭环已经形成：刷卡分流、管理员注册、学员确认、人脸/指纹打卡、成功页展示、本地 CSV 成功流水均已接入。MQTT 目前仍主要上报环境属性，考勤事件云端上报尚未接入。
+重要现状：核心闭环已经形成：刷卡分流、管理员注册、学员确认、人脸/指纹打卡、成功页展示、本地 CSV 成功流水、MQTT 考勤事件上报和断网补传均已接入。
 
 ---
 
@@ -149,7 +149,7 @@ app_bootstrap_start()
   │   ├── app_wifi_wait_connected()
   │   ├── app_time_sync_once()
   │   ├── app_mqtt_start()
-  │   └── 循环读取 sensor_queue 并上报属性
+  │   └── 循环读取 sensor_queue 上报属性，并处理 attendance_upload_pending 补传
   ├── app_perf_monitor_start() 当前按调试需要启停
   └── app_bootstrap_start 返回
 ```
@@ -163,7 +163,7 @@ app_bootstrap_start()
 - RFID 回调进入 `app_attendance` 队列，不能在硬件回调里直接调用 LVGL。
 - `attendance_record_init()` 挂载 `records` SPIFFS 分区；若失败，UI 成功页不阻塞，但日志必须报错。
 - `CLEAR_BIOMETRIC_DB_ON_BOOT` 当前是调试开关；正常演示前应确认是否需要关闭，避免每次上电清空已注册模板。
-- MQTT 当前主要上报环境属性，考勤事件上报尚未接入。
+- MQTT 同时上报环境属性和考勤事件；考勤事件使用独立 pending CSV，收到 event/post/reply `code=200` 后才删除队首记录。
 
 ---
 
@@ -375,9 +375,10 @@ Standby
 | 挂载点 | `/records` |
 | 分区标签 | `records` |
 | 文件路径 | `/records/attendance.csv` |
+| 补传队列 | `/records/attendance_upload_pending.csv` |
 | 写入时机 | 人脸或指纹打卡成功，且返回 ID 与当前卡片档案绑定值匹配 |
 | 当前记录范围 | 只追加成功记录；失败记录暂只打印日志 |
-| 屏幕查看 | 管理员页点击 `Records`，进入 `screen_records` 查看最近 20 条，表格区域可上下滚动，并可点击清空按钮重置记录文件 |
+| 屏幕查看 | 管理员页点击 `Records`，进入 `screen_records` 查看最近 20 条，表格区域可上下滚动，并可点击清空按钮重置记录文件和补传队列 |
 
 CSV 表头：
 
@@ -392,9 +393,12 @@ records SPIFFS mounted total=... used=...
 created attendance record CSV: /records/attendance.csv
 attendance record appended student_id=... card=... method=...
 attendance record read recent count=... path=/records/attendance.csv
+publish attendance event student_id=... card=... method=... payload=...
+attendance event reply received ok=1 data=...
+attendance event upload confirmed and pending row removed
 ```
 
-注意：`/records/attendance.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。当前支持在设备屏幕上通过 LVGL 表格查看最近 20 条成功考勤记录，并可在表格区域上下滚动；管理员可在记录页点击清空按钮重写 CSV 表头并删除已有流水。若要在电脑端拿到完整 CSV，仍需要后续增加导出接口、串口 dump 命令或文件系统读取工具。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
+注意：`/records/attendance.csv` 和 `/records/attendance_upload_pending.csv` 是 ESP32 设备 SPIFFS 文件系统里的运行时文件，不是工程目录下的普通 CSV。当前支持在设备屏幕上通过 LVGL 表格查看最近 20 条成功考勤记录，并可在表格区域上下滚动；管理员可在记录页点击清空按钮重写 CSV 表头并删除已有流水及待上传队列。若要在电脑端拿到完整 CSV，仍需要后续增加导出接口、串口 dump 命令或文件系统读取工具。工程目录下的 `docs/attendance_profiles_seed.csv` 仅适合作为可查看的静态名单源/答辩展示资料；设备当前真实档案仍以 NVS dump 和运行时记录为准。
 
 ---
 
@@ -413,54 +417,73 @@ attendance record read recent count=... path=/records/attendance.csv
 
 ---
 
-# 9. MQTT 上报建议
+# 9. MQTT 上报与断网补传
 
-当前 `main/app_network.c` 上报的是 OneNET 属性主题：
+`main/app_network.c` 当前同时处理 OneNET 属性上报和考勤事件上报。
+
+属性主题：
 
 ```text
 $sys/{pid}/{device-name}/thing/property/post
 ```
 
-考勤建议使用事件模型，事件标识符：
+考勤事件主题：
+
+```text
+$sys/{pid}/{device-name}/thing/event/post
+$sys/{pid}/{device-name}/thing/event/post/reply
+```
+
+事件标识符：
 
 ```text
 attendance_event
 ```
 
-推荐字段：
+云端事件字段按本地 CSV 表头配置：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `ts` | int64 | Unix 秒级时间戳，与 `/records/attendance.csv` 第一列一致 |
+| `time` | string | 本地时间字符串，例如 `2026-05-14 10:20:34` |
 | `student_id` | string | 学号，主展示字段 |
+| `card_uid` | string | RFID 物理 UID，例如 `26:32:8E:AA` |
 | `method` | string | `face` / `fingerprint` |
-| `result` | string | `ok` / `fail` |
-| `reason` | string | `matched` / `not_registered` / `not_owner` / `timeout` / `module_error` |
-| `face_user_id` | int | 人脸 ID，可选 |
-| `finger_page_id` | int | 指纹页号，可选 |
-| `ts` | int64 | Unix 毫秒时间戳 |
-| `device_id` | string | 设备 ID，可选 |
+| `result` | string | 当前成功流水固定为 `ok` |
+| `reason` | string | 当前成功流水固定为 `matched` |
+| `face_user_id` | int | 人脸 ID，未绑定/不用该方式时为 `0` |
+| `finger_page_id` | int | 指纹页号，未绑定/不用该方式时为 `0` |
 
-最小事件示例：
+事件示例：
 
 ```json
 {
-  "id": "1",
+  "id": "2562544490",
   "version": "1.0",
   "params": {
     "attendance_event": {
       "value": {
+        "ts": 1776001234,
+        "time": "2026-04-13 10:20:34",
         "student_id": "202401001",
+        "card_uid": "26:32:8E:AA",
         "method": "face",
         "result": "ok",
         "reason": "matched",
         "face_user_id": 12,
-        "ts": 1776001234000
+        "finger_page_id": 0
       },
       "time": 1776001234000
     }
   }
 }
 ```
+
+补传规则：
+- 打卡成功先追加 `/records/attendance.csv`，再追加 `/records/attendance_upload_pending.csv`。
+- MQTT connected 后网络任务只发送 pending 队首一条，避免固定 `id` 下多条 in-flight 难以确认。
+- 收到 `thing/event/post/reply` 且 JSON 中 `code=200` 后，才删除 pending 队首。
+- MQTT 断开、发布失败、reply 非 200 或 15 秒内未收到 reply 时，pending 记录保留并稍后重试。
 
 ---
 
@@ -593,7 +616,7 @@ esp_err_t app_attendance_confirm_return(void);
 # 15. 已知缺口
 
 - `attendance_profile` 当前字段仍包含 `uid` 和 `name`，与“直接读卡内学号”方案不完全贴合，建议后续重命名或新增 `student_id` 主键模型。
-- 考勤事件 MQTT 上报未实现。
+- 考勤事件 MQTT 上报已实现成功流水补传；失败、超时、非本人等审计事件仍未纳入云端上报。
 - 本地考勤流水当前只记录成功打卡；失败、超时、非本人等审计流水后续可扩展。
 - `/records/attendance.csv` 已支持管理员在屏幕通过 LVGL 表格查看最近 20 条，并可上下滚动；若需要电脑端查看完整 CSV，需要后续增加导出接口、串口 dump 命令或文件系统读取工具。
 - `CLEAR_BIOMETRIC_DB_ON_BOOT` 是调试开关，正常演示前应确认是否关闭，避免上电清空 FM225/AS608 模板和本地绑定。
